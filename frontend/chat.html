@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Room</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="chatRoomStyle.css">
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <button onclick="window.location.href='index.html'" class="back-btn">&larr; Back</button>
+            <h2 id="room-name">Room Name</h2>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <!-- Messages will appear here -->
+        </div>
+        <form class="chat-input-wrapper" id="chat-form">
+            <div class="chat-input">
+                <div class="input-field-wrapper">
+                    <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off" required />
+                    <div class="input-divider"></div>
+                </div>
+                <button type="submit" class="send-btn" title="Send message">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </div>
+        </form>
+    </div>
+    <script src="chat.js"></script>
+</body>
+</html>
