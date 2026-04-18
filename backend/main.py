@@ -9,6 +9,7 @@ from models import (
     User, Message, ChatRoom, BadWord, 
     JoinRoomRequest, SendMessageRequest
 )
+from bad_word_filter import BadWordFilter, load_bad_words_from_file
 
 app = FastAPI(title="Chatroom Messenger Filter Backend")
 
@@ -24,13 +25,18 @@ app.add_middleware(
 # In-memory storage
 rooms: Dict[str, ChatRoom] = {}
 users: Dict[str, User] = {}
+
+# Load bad words from file
+bad_words_list = load_bad_words_from_file()
 bad_words: List[BadWord] = [
-    BadWord(word="badword1", replacement="***"),
-    BadWord(word="badword2", replacement="***"),
-    BadWord(word="hate", replacement="***"),
-    BadWord(word="spam", replacement="***"),
+    BadWord(word=word, replacement="***")
+    for word in bad_words_list
 ]
+
 banned_users: Set[str] = set()
+
+# Initialize ANTLR-based bad word filter
+bad_word_filter = BadWordFilter(bad_words_list=bad_words_list)
 
 # Initialize default rooms
 def init_default_rooms():
@@ -111,16 +117,18 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-# Utility function to filter bad words
+# Utility function to filter bad words using ANTLR or fallback method
 def filter_message(text: str) -> tuple[str, bool]:
-    filtered = text
-    is_filtered = False
-    for bad_word in bad_words:
-        if bad_word.word.lower() in text.lower():
-            is_filtered = True
-            filtered = filtered.replace(bad_word.word, bad_word.replacement)
-            filtered = filtered.replace(bad_word.word.upper(), bad_word.replacement)
-            filtered = filtered.replace(bad_word.word.capitalize(), bad_word.replacement)
+    """
+    Filter bad words from message using ANTLR or fallback method
+    
+    Args:
+        text: The message text to filter
+    
+    Returns:
+        tuple: (filtered_text, is_filtered)
+    """
+    filtered, is_filtered, _ = bad_word_filter.filter_message(text)
     return filtered, is_filtered
 
 # ========== ROOM ENDPOINTS ==========
