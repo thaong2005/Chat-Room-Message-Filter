@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Lobby | Explore Rooms</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="lobby-container">
+        <!-- Header -->
+        <div class="lobby-header">
+            <h1>Explore Rooms</h1>
+            <p>Find a community or join a friend's conversation.</p>
+            
+            <div class="search-box">
+                <i class="fas fa-search" style="color: var(--text-muted);"></i>
+                <input type="text" placeholder="Search for a chatroom...">
+            </div>
+        </div>
+
+        <!-- Room List -->
+        <div class="rooms-list">
+            
+            <!-- Room 1 -->
+            <a href="#" class="room-item">
+                <div class="room-info">
+                    <div class="room-icon">G</div>
+                    <div class="room-details">
+                        <h3>Gaming Central</h3>
+                        <span>Everything from RPGs to FPS</span>
+                    </div>
+                </div>
+                <div class="user-count">
+                    <div class="dot"></div>
+                    42 / 100
+                </div>
+            </a>
+
+            <!-- Room 2 -->
+            <a href="#" class="room-item">
+                <div class="room-info">
+                    <div class="room-icon" style="background: #e91e63;">D</div>
+                    <div class="room-details">
+                        <h3>Developers Den</h3>
+                        <span>React, Python, and more</span>
+                    </div>
+                </div>
+                <div class="user-count">
+                    <div class="dot"></div>
+                    12 / 50
+                </div>
+            </a>
+
+            <!-- Room 3 -->
+            <a href="#" class="room-item">
+                <div class="room-info">
+                    <div class="room-icon" style="background: #f1c40f;">M</div>
+                    <div class="room-details">
+                        <h3>Music Theory</h3>
+                        <span>Sharing beats and vibes</span>
+                    </div>
+                </div>
+                <div class="user-count">
+                    <div class="dot"></div>
+                    8 / 20
+                </div>
+            </a>
+
+            <!-- Room 4 (Duplicate for scrolling) -->
+            <a href="#" class="room-item">
+                <div class="room-info">
+                    <div class="room-icon" style="background: #1abc9c;">A</div>
+                    <div class="room-details">
+                        <h3>Art & Design</h3>
+                        <span>Showcase your latest work</span>
+                    </div>
+                </div>
+                <div class="user-count">
+                    <div class="dot"></div>
+                    29 / 60
+                </div>
+            </a>
+
+            <!-- Room 5 (Duplicate for scrolling) -->
+            <a href="#" class="room-item">
+                <div class="room-info">
+                    <div class="room-icon" style="background: #9b59b6;">S</div>
+                    <div class="room-details">
+                        <h3>Study Group</h3>
+                        <span>Focused work only</span>
+                    </div>
+                </div>
+                <div class="user-count">
+                    <div class="dot"></div>
+                    5 / 15
+                </div>
+            </a>
+
+            <!-- Room 6 -->
+            <a href="#" class="room-item">
+                <div class="room-info">
+                    <div class="room-icon" style="background: #e67e22;">C</div>
+                    <div class="room-details">
+                        <h3>Cinema Talk</h3>
+                        <span>Reviewing the latest hits</span>
+                    </div>
+                </div>
+                <div class="user-count">
+                    <div class="dot" style="background-color: #80848e;"></div>
+                    0 / 40
+                </div>
+            </a>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="lobby-footer">
+            <button class="btn-create">Create Your Own Room</button>
+        </div>
+    </div>
+
+</body>
+</html>
