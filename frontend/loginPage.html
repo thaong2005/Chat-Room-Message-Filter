@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login — DiscordChat</title>
+    <link rel="stylesheet" href="auth.css" />
+</head>
+<body>
+
+    <div class="auth-card">
+
+        <!-- Header -->
+        <div class="auth-header">
+            <div class="auth-logo">💬</div>
+            <h1>Welcome back!</h1>
+            <p>We're so excited to see you again!</p>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Login Form -->
+        <form class="auth-form" id="loginForm" novalidate>
+
+            <!-- Username -->
+            <div class="form-group" id="usernameGroup">
+                <label for="username">Username <span class="required">*</span></label>
+                <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    placeholder="Enter your username"
+                    autocomplete="username"
+                />
+                <span class="error-msg" id="usernameError">Please enter a valid username.</span>
+            </div>
+
+            <!-- Password -->
+            <div class="form-group" id="passwordGroup">
+                <label for="password">Password <span class="required">*</span></label>
+                <div class="input-wrapper">
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        placeholder="Enter your password"
+                        autocomplete="current-password"
+                    />
+                    <button type="button" class="toggle-password" aria-label="Toggle password visibility" onclick="togglePassword('password', this)">
+                        👁
+                    </button>
+                </div>
+                <span class="error-msg" id="passwordError">Please enter your password.</span>
+            </div>
+
+            <!-- Forgot Password -->
+            <a href="#" class="forgot-link">Forgot your password?</a>
+
+            <!-- Submit -->
+            <button type="submit" class="btn-submit">Log In</button>
+
+            <!-- Footer -->
+            <div class="auth-footer">
+                Need an account? <a href="register.html">Register</a>
+            </div>
+
+        </form>
+
+    </div>
+
+    <script>
+        function togglePassword(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const isHidden = input.type === 'password';
+            input.type = isHidden ? 'text' : 'password';
+            btn.textContent = isHidden ? '🙈' : '👁';
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+
+            const username = document.getElementById('username');
+            const usernameGroup = document.getElementById('usernameGroup');
+            if (!username.value.trim()) {
+                usernameGroup.classList.add('error');
+            } else {
+                usernameGroup.classList.remove('error');
+            }
+
+            const password = document.getElementById('password');
+            const passwordGroup = document.getElementById('passwordGroup');
+            if (!password.value.trim()) {
+                passwordGroup.classList.add('error');
+            } else {
+                passwordGroup.classList.remove('error');
+            }
+
+            const res = await fetch("http://localhost:8000/login?username=" + encodeURIComponent(username) + '&password=' + encodeURIComponent(password), {
+                method: "POST"
+            })
+
+            const data = await res.json();
+
+            if (res.ok) {
+                window.location.href = ""
+            }
+        });
+
+        // Clear error on input
+        ['email', 'password'].forEach(id => {
+            document.getElementById(id).addEventListener('input', function () {
+                this.closest('.form-group').classList.remove('error');
+            });
+        });
+
+    </script>
+
+</body>
+</html>

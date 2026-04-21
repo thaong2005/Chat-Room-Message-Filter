@@ -22,6 +22,17 @@ Chờ tới khi thấy:
 Uvicorn running on http://0.0.0.0:8000
 ```
 
+
+**For Python 3.14**
+
+```bash
+cd backend
+py -3.12 -m venv .venv
+.venv\Scripts\activate
+python -m pip install -U pip
+pip install -r requirements.txt
+```
+
 ## Bước 3: Chạy Frontend
 
 **Option A: Live Server (VS Code)**

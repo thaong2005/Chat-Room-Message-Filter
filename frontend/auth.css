@@ -1,0 +1,312 @@
+/* ========== CSS VARIABLES (matches lobby theme) ========== */
+:root {
+    --bg-color: #1e1f22;
+    --container-bg: #2b2d31;
+    --input-bg: #1e1f22;
+    --item-hover: #232428;
+    --discord-blurple: #5865f2;
+    --discord-blurple-hover: #4752c4;
+    --discord-blurple-active: #3c45a5;
+    --text-main: #f2f3f5;
+    --text-muted: #949ba4;
+    --text-link: #00a8fc;
+    --online-green: #23a55a;
+    --danger: #ed4245;
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* ========== RESET & BASE ========== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'gg sans', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+body {
+    background-color: var(--bg-color);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--text-main);
+    background-image:
+        radial-gradient(ellipse at 20% 50%, rgba(88, 101, 242, 0.08) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(88, 101, 242, 0.05) 0%, transparent 50%);
+}
+
+/* ========== AUTH CARD ========== */
+.auth-card {
+    width: 90%;
+    max-width: 480px;
+    background-color: var(--container-bg);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 32px 40px 28px;
+    border: 1px solid var(--border-subtle);
+    animation: slideUp 0.3s ease forwards;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ========== HEADER ========== */
+.auth-header {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.auth-logo {
+    width: 52px;
+    height: 52px;
+    background: var(--discord-blurple);
+    border-radius: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 26px;
+    margin: 0 auto 16px;
+    box-shadow: 0 4px 16px rgba(88, 101, 242, 0.4);
+    transition: border-radius 0.2s;
+}
+
+.auth-logo:hover {
+    border-radius: 50%;
+}
+
+.auth-header h1 {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--text-main);
+}
+
+.auth-header p {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+/* ========== DIVIDER ========== */
+.divider {
+    height: 1px;
+    background: var(--border-subtle);
+    margin: 20px 0;
+}
+
+/* ========== FORM ELEMENTS ========== */
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-group label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-muted);
+}
+
+.form-group label .required {
+    color: var(--danger);
+    margin-left: 2px;
+}
+
+.form-group input {
+    background-color: var(--input-bg);
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    color: var(--text-main);
+    padding: 10px 12px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+}
+
+.form-group input::placeholder {
+    color: #5c5f66;
+}
+
+.form-group input:focus {
+    border-color: var(--discord-blurple);
+    box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.2);
+}
+
+.form-group input:focus::placeholder {
+    color: #72767d;
+}
+
+/* Password wrapper for show/hide toggle */
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-wrapper input {
+    padding-right: 40px;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 10px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 16px;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    transition: color 0.2s;
+}
+
+.toggle-password:hover {
+    color: var(--text-main);
+}
+
+
+/* ========== CHECKBOX ========== */
+.checkbox-group {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.checkbox-group input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    accent-color: var(--discord-blurple);
+    cursor: pointer;
+    margin-top: 1px;
+}
+
+.checkbox-group label {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.4;
+    cursor: pointer;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+}
+
+.checkbox-group label a {
+    color: var(--text-link);
+    text-decoration: none;
+}
+
+.checkbox-group label a:hover {
+    text-decoration: underline;
+}
+
+/* ========== FORGOT PASSWORD ========== */
+.forgot-link {
+    font-size: 12px;
+    color: var(--text-link);
+    text-decoration: none;
+    align-self: flex-end;
+    margin-top: -8px;
+}
+
+.forgot-link:hover {
+    text-decoration: underline;
+}
+
+/* ========== SUBMIT BUTTON ========== */
+.btn-submit {
+    background: var(--discord-blurple);
+    color: white;
+    border: none;
+    padding: 11px 20px;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.2s, transform 0.1s;
+    margin-top: 4px;
+    letter-spacing: 0.02em;
+}
+
+.btn-submit:hover {
+    background: var(--discord-blurple-hover);
+}
+
+.btn-submit:active {
+    background: var(--discord-blurple-active);
+    transform: scale(0.99);
+}
+
+/* ========== FOOTER LINK ========== */
+.auth-footer {
+    text-align: left;
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.auth-footer a {
+    color: var(--text-link);
+    text-decoration: none;
+}
+
+.auth-footer a:hover {
+    text-decoration: underline;
+}
+
+/* ========== ERROR MESSAGE ========== */
+.error-msg {
+    font-size: 12px;
+    color: var(--danger);
+    margin-top: 2px;
+    display: none;
+}
+
+.form-group.error input {
+    border-color: var(--danger);
+}
+
+.form-group.error .error-msg {
+    display: block;
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 520px) {
+    .auth-card {
+        padding: 28px 20px 24px;
+        border-radius: 0;
+        min-height: 100vh;
+        border: none;
+        justify-content: center;
+        display: flex;
+        flex-direction: column;
+    }
+
+    body {
+        align-items: flex-start;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr 1fr;
+    }
+}
