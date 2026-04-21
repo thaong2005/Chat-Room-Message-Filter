@@ -5,6 +5,7 @@ from datetime import datetime
 class User(BaseModel):
     id: str
     username: str
+    password: str
     role: str = "user"  # "user" or "admin"
     is_banned: bool = False
 

@@ -1,5 +1,8 @@
+from pathlib import Path
 from fastapi import FastAPI, WebSocket, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from typing import Dict, List, Set
 from datetime import datetime
 import json
@@ -10,6 +13,9 @@ from models import (
     JoinRoomRequest, SendMessageRequest
 )
 from bad_word_filter import BadWordFilter, load_bad_words_from_file
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+FRONTEND_DIR = PROJECT_ROOT / "frontend"
 
 app = FastAPI(title="Chatroom Messenger Filter Backend")
 
@@ -131,6 +137,50 @@ def filter_message(text: str) -> tuple[str, bool]:
     filtered, is_filtered, _ = bad_word_filter.filter_message(text)
     return filtered, is_filtered
 
+# ========== LOGIN & REGISTER ENDPOINTS ============
+
+@app.get("/debug-path")
+async def debug_path():
+    return {
+        "PROJECT_ROOT": str(PROJECT_ROOT),
+        "FRONTEND_DIR": str(FRONTEND_DIR),
+        "exists": FRONTEND_DIR.exists(),
+        "files": [f.name for f in FRONTEND_DIR.iterdir()] if FRONTEND_DIR.exists() else []
+    }
+
+@app.get("/login", tags=["Auth"])
+async def login() -> FileResponse:
+    return FileResponse(FRONTEND_DIR / "loginPage.html")
+
+@app.get("/register", tags=["Auth"])
+async def register() -> FileResponse:
+    return FileResponse(FRONTEND_DIR / "registerPage.html")
+
+@app.post("/login", tags=["Auth"])
+async def Login(username: str, password: str):
+    """Login with username and password"""
+    for user in users.values():
+        if user.username == username and user.password == password:
+            if user.is_banned:
+                raise HTTPException(status_code=403, detail="Your account is banned")
+            return {"message": "Login successful!", "username": user.username}
+
+@app.post("/register", tags=["Auth"])
+async def Register(username: str, password: str):
+    """ Register new user """
+    # Check if user already exists
+    for user in users.values():
+        if user.username == username:
+            raise HTTPException(status_code=400, detail="Account already exists. Pick another")
+        
+    user_id = str(uuid.uuid4())
+    new_user = User(id=user_id, username=username, password=password, role="user")
+    users[user_id] = new_user
+
+    return {"message" : "Registered successfully!", "username": username}
+
+
+
 # ========== ROOM ENDPOINTS ==========
 
 @app.get("/rooms", tags=["Rooms"])
@@ -176,7 +226,7 @@ async def join_room(user_id: str, request: JoinRoomRequest):
     """Join a chat room"""
     # Auto-create user if not exists
     if user_id not in users:
-        user = User(id=user_id, username=request.username, role="user")
+        user = User(id=user_id, username=request.username, password="",role="user")
         users[user_id] = user
     
     if request.room_id not in rooms:
@@ -343,7 +393,7 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, user_id: str):
     # Auto-create user if not exists
     if user_id not in users:
         username = f"User_{user_id[:8]}"
-        users[user_id] = User(id=user_id, username=username, role="user")
+        users[user_id] = User(id=user_id, username=username, password="",role="user")
     
     user = users[user_id]
     
@@ -422,6 +472,10 @@ async def root():
         "docs": "/docs",
         "version": "1.0.0"
     }
+
+
+app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
+
 
 if __name__ == "__main__":
     import uvicorn
