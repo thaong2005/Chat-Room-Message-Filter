@@ -56,12 +56,14 @@
             <!-- Forgot Password -->
             <a href="#" class="forgot-link">Forgot your password?</a>
 
+            <div id="loginError" style="display:none; color: var(--danger); font-size: 13px; text-align: center;"></div>
+            
             <!-- Submit -->
-            <button type="submit" class="btn-submit">Log In</button>
+            <button type="submit" class="btn-submit" id="submitBtn">Log In</button>
 
             <!-- Footer -->
             <div class="auth-footer">
-                Need an account? <a href="register.html">Register</a>
+                Need an account? <a href="registerPage.html">Register</a>
             </div>
 
         </form>
@@ -78,42 +80,75 @@
 
         document.getElementById('loginForm').addEventListener('submit', async function (e) {
             e.preventDefault();
-
-
-            const username = document.getElementById('username');
-            const usernameGroup = document.getElementById('usernameGroup');
-            if (!username.value.trim()) {
-                usernameGroup.classList.add('error');
+ 
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            const loginError = document.getElementById('loginError');
+            const submitBtn = document.getElementById('submitBtn');
+ 
+            // Clear previous errors
+            loginError.style.display = 'none';
+            loginError.textContent = '';
+ 
+            // Validate fields
+            let valid = true;
+ 
+            if (!usernameInput.value.trim()) {
+                document.getElementById('usernameGroup').classList.add('error');
+                valid = false;
             } else {
-                usernameGroup.classList.remove('error');
+                document.getElementById('usernameGroup').classList.remove('error');
             }
-
-            const password = document.getElementById('password');
-            const passwordGroup = document.getElementById('passwordGroup');
-            if (!password.value.trim()) {
-                passwordGroup.classList.add('error');
+ 
+            if (!passwordInput.value.trim()) {
+                document.getElementById('passwordGroup').classList.add('error');
+                valid = false;
             } else {
-                passwordGroup.classList.remove('error');
+                document.getElementById('passwordGroup').classList.remove('error');
             }
-
-            const res = await fetch("http://localhost:8000/login?username=" + encodeURIComponent(username) + '&password=' + encodeURIComponent(password), {
-                method: "POST"
-            })
-
-            const data = await res.json();
-
-            if (res.ok) {
-                window.location.href = "index.html"
+ 
+            if (!valid) return;
+ 
+            // Send to backend
+            submitBtn.textContent = 'Logging in...';
+            submitBtn.disabled = true;
+ 
+            try {
+                const res = await fetch(
+                    "http://localhost:8000/login?username=" + encodeURIComponent(usernameInput.value.trim()) +
+                    "&password=" + encodeURIComponent(passwordInput.value),
+                    { method: "POST" }
+                );
+ 
+                const data = await res.json();
+ 
+                if (res.ok) {
+                    // Save user info for use in lobby and chat
+                    localStorage.setItem('user_id', data.user_id);
+                    localStorage.setItem('username', data.username);
+                    localStorage.setItem('role', data.role);
+                    window.location.href = "index.html";
+                } else {
+                    // Show error from backend e.g. "Invalid username or password"
+                    loginError.textContent = data.detail || "Login failed. Please try again.";
+                    loginError.style.display = 'block';
+                }
+ 
+            } catch (err) {
+                loginError.textContent = "Could not connect to server. Is the backend running?";
+                loginError.style.display = 'block';
+            } finally {
+                submitBtn.textContent = 'Log In';
+                submitBtn.disabled = false;
             }
         });
-
-        // Clear error on input
-        ['email', 'password'].forEach(id => {
+ 
+        // Clear error styling on input
+        ['username', 'password'].forEach(id => {
             document.getElementById(id).addEventListener('input', function () {
                 this.closest('.form-group').classList.remove('error');
             });
         });
-
     </script>
 
 </body>

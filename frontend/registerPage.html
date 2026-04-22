@@ -49,13 +49,15 @@
                 <span class="error-msg" id="passwordError">Password must be at least 8 characters.</span>
             </div>
 
+            <div id="registerError" style="display:none; color: var(--danger); font-size: 13px; text-align: center;"></div>
+            <div id="registerSuccess" style="display:none; color: var(--online-green); font-size: 13px; text-align: center;"></div>
 
             <!-- Submit -->
-            <button type="submit" class="btn-submit">Continue</button>
+            <button type="submit" class="btn-submit" id="submitBtn">Continue</button>
 
             <!-- Footer -->
             <div class="auth-footer">
-                Already have an account? <a href="login.html">Log In</a>
+                Already have an account? <a href="loginPage.html">Log In</a>
             </div>
 
         </form>
@@ -76,27 +78,81 @@
             document.getElementById(groupId).classList.toggle('error', show);
         }
 
-        document.getElementById('registerForm').addEventListener('submit', function (e) {
+        document.getElementById('registerForm').addEventListener('submit', async function (e) {
             e.preventDefault();
+ 
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            const registerError = document.getElementById('registerError');
+            const registerSuccess = document.getElementById('registerSuccess');
+            const submitBtn = document.getElementById('submitBtn');
+ 
+            // Clear previous banners
+            registerError.style.display = 'none';
+            registerError.textContent = '';
+            registerSuccess.style.display = 'none';
+            registerSuccess.textContent = '';
+ 
+            // Validate
             let valid = true;
-
-            const username = document.getElementById('username').value.trim();
-            setError('usernameGroup', username.length < 3);
-            if (username.length < 3) valid = false;
-
-            if (valid) {
-                // TODO: submit registration data to your backend
-                console.log('Register submitted', { username });
+ 
+            const username = usernameInput.value.trim();
+            if (username.length < 3) {
+                setError('usernameGroup', true);
+                valid = false;
+            } else {
+                setError('usernameGroup', false);
+            }
+ 
+            const password = passwordInput.value;
+            if (password.length < 8) {
+                setError('passwordGroup', true);
+                valid = false;
+            } else {
+                setError('passwordGroup', false);
+            }
+ 
+            if (!valid) return;
+ 
+            // Send to backend
+            submitBtn.textContent = 'Creating account...';
+            submitBtn.disabled = true;
+ 
+            try {
+                const res = await fetch(
+                    "http://localhost:8000/register?username=" + encodeURIComponent(username) +
+                    "&password=" + encodeURIComponent(password),
+                    { method: "POST" }
+                );
+ 
+                const data = await res.json();
+ 
+                if (res.ok) {
+                    // Show success then redirect to login
+                    registerSuccess.textContent = "Account created! Redirecting to login...";
+                    registerSuccess.style.display = 'block';
+                    setTimeout(() => {
+                        window.location.href = "loginPage.html";
+                    }, 1500);
+                } else {
+                    // Show error from backend e.g. "Account already exists"
+                    registerError.textContent = data.detail || "Registration failed. Please try again.";
+                    registerError.style.display = 'block';
+                }
+ 
+            } catch (err) {
+                registerError.textContent = "Could not connect to server. Is the backend running?";
+                registerError.style.display = 'block';
+            } finally {
+                submitBtn.textContent = 'Continue';
+                submitBtn.disabled = false;
             }
         });
-
-        /* Clear errors on input */
-        ['username'].forEach(id => {
-            const groupMap = {
-                username: 'usernameGroup'
-            };
+ 
+        // Clear error styling on input
+        ['username', 'password'].forEach(id => {
             document.getElementById(id).addEventListener('input', function () {
-                setError(groupMap[id], false);
+                this.closest('.form-group').classList.remove('error');
             });
         });
 

@@ -2,9 +2,11 @@ from pathlib import Path
 from fastapi import FastAPI, WebSocket, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from typing import Dict, List, Set
 from datetime import datetime
+from db import get_connection, init_db 
+
 import json
 import uuid
 
@@ -16,6 +18,7 @@ from bad_word_filter import BadWordFilter, load_bad_words_from_file
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 FRONTEND_DIR = PROJECT_ROOT / "frontend"
+
 
 app = FastAPI(title="Chatroom Messenger Filter Backend")
 
@@ -29,8 +32,8 @@ app.add_middleware(
 )
 
 # In-memory storage
-rooms: Dict[str, ChatRoom] = {}
-users: Dict[str, User] = {}
+# rooms: Dict[str, ChatRoom] = {}
+# users: Dict[str, User] = {}
 
 # Load bad words from file
 bad_words_list = load_bad_words_from_file()
@@ -39,67 +42,35 @@ bad_words: List[BadWord] = [
     for word in bad_words_list
 ]
 
-banned_users: Set[str] = set()
+# banned_users: Set[str] = set()
 
 # Initialize ANTLR-based bad word filter
 bad_word_filter = BadWordFilter(bad_words_list=bad_words_list)
 
 # Initialize default rooms
 def init_default_rooms():
+    conn = get_connection()
+    cursor = conn.cursor() 
+    
     default_rooms = [
-        ChatRoom(
-            id="room1",
-            name="Gaming Central",
-            description="Everything from RPGs to FPS",
-            max_users=100,
-            current_users=0,
-            created_by="admin"
-        ),
-        ChatRoom(
-            id="room2",
-            name="Developers Den",
-            description="React, Python, and more",
-            max_users=50,
-            current_users=0,
-            created_by="admin"
-        ),
-        ChatRoom(
-            id="room3",
-            name="Music Theory",
-            description="Sharing beats and vibes",
-            max_users=20,
-            current_users=0,
-            created_by="admin"
-        ),
-        ChatRoom(
-            id="room4",
-            name="Art & Design",
-            description="Showcase your latest work",
-            max_users=60,
-            current_users=0,
-            created_by="admin"
-        ),
-        ChatRoom(
-            id="room5",
-            name="Study Group",
-            description="Focused work only",
-            max_users=15,
-            current_users=0,
-            created_by="admin"
-        ),
-        ChatRoom(
-            id="room6",
-            name="Cinema Talk",
-            description="Reviewing the latest hits",
-            max_users=40,
-            current_users=0,
-            created_by="admin"
-        ),
+        ("room1", "Gaming Central", "Everything from RPGs to FPS", 100, "admin"),
+        ("room2", "Developers Den", "React, Python, and more", 50, "admin"),
+        ("room3", "Music Theory", "Sharing beats and vibes", 20, "admin"),
+        ("room4", "Art & Design", "Showcase your latest work", 60, "admin"),
+        ("room5", "Study Group", "Focused work only", 15, "admin"),
+        ("room6", "Cinema Talk", "Reviewing the latest hits", 40, "admin"),
     ]
-    for room in default_rooms:
-        rooms[room.id] = room
+    
+    cursor.executemany("""
+        INSERT OR IGNORE INTO rooms (id, name, description, max_users, created_by)
+        VALUES (?, ?, ?, ?, ?)
+    """, default_rooms)
+
+    conn.commit()
+    conn.close()
 
 # Initialize default rooms on startup
+init_db()
 init_default_rooms()
 
 # WebSocket manager for real-time chat
@@ -139,14 +110,10 @@ def filter_message(text: str) -> tuple[str, bool]:
 
 # ========== LOGIN & REGISTER ENDPOINTS ============
 
-@app.get("/debug-path")
-async def debug_path():
-    return {
-        "PROJECT_ROOT": str(PROJECT_ROOT),
-        "FRONTEND_DIR": str(FRONTEND_DIR),
-        "exists": FRONTEND_DIR.exists(),
-        "files": [f.name for f in FRONTEND_DIR.iterdir()] if FRONTEND_DIR.exists() else []
-    }
+@app.get("/", tags=["Root"])
+async def root():
+    """Root endpoint"""
+    return RedirectResponse(url="/login", status_code=303)
 
 @app.get("/login", tags=["Auth"])
 async def login() -> FileResponse:
@@ -159,25 +126,42 @@ async def register() -> FileResponse:
 @app.post("/login", tags=["Auth"])
 async def Login(username: str, password: str):
     """Login with username and password"""
-    for user in users.values():
-        if user.username == username and user.password == password:
-            if user.is_banned:
-                raise HTTPException(status_code=403, detail="Your account is banned")
-            return {"message": "Login successful!", "username": user.username}
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute(
+        "SELECT * FROM users WHERE username = ? AND password = ?", (username, password)
+    )
+    user = cursor.fetchone()
+    conn.close()
+
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    if user["is_banned"]:
+        raise HTTPException(status_code=403, detail="Your account is banned")
+
+    return {"message": "Login successful!", "user_id": user["id"], "username": user["username"]}    
 
 @app.post("/register", tags=["Auth"])
 async def Register(username: str, password: str):
     """ Register new user """
+    conn = get_connection()
+    cursor = conn.cursor()
+   
     # Check if user already exists
-    for user in users.values():
-        if user.username == username:
-            raise HTTPException(status_code=400, detail="Account already exists. Pick another")
-        
-    user_id = str(uuid.uuid4())
-    new_user = User(id=user_id, username=username, password=password, role="user")
-    users[user_id] = new_user
+    cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
+    if cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=400, detail="Account already exists. Pick another")
 
-    return {"message" : "Registered successfully!", "username": username}
+    user_id = str(uuid.uuid4())
+    cursor.execute(
+        "INSERT INTO users (id, username, password, role) VALUES (?, ?, ?, ?)",
+        (user_id, username, password, "user")
+    )
+    conn.commit()
+    conn.close()
+    return {"message": "Registered successfully!", "username": username}
 
 
 
@@ -186,29 +170,54 @@ async def Register(username: str, password: str):
 @app.get("/rooms", tags=["Rooms"])
 async def get_all_rooms():
     """Get all chat rooms"""
-    return list(rooms.values())
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM rooms")
+    rooms = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return rooms
 
 @app.post("/rooms", tags=["Rooms"])
 async def create_room(room: ChatRoom):
     """Create a new chat room"""
-    if room.id in rooms:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM rooms WHERE id = ?", (room.id,))
+    if cursor.fetchone():
+        conn.close()
         raise HTTPException(status_code=400, detail="Room already exists")
-    rooms[room.id] = room
+    cursor.execute(
+        "INSERT INTO rooms (id, name, description, max_users, created_by) VALUES (?, ?, ?, ?, ?)",
+        (room.id, room.name, room.description, room.max_users, room.created_by)
+    )
+    conn.commit()
+    conn.close()
     return {"message": "Room created", "room": room}
 
 @app.get("/rooms/{room_id}", tags=["Rooms"])
 async def get_room(room_id: str):
     """Get a specific chat room"""
-    if room_id not in rooms:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM rooms WHERE id = ?", (room_id,))
+    room = cursor.fetchone()
+    conn.close()
+    if not room:
         raise HTTPException(status_code=404, detail="Room not found")
-    return rooms[room_id]
+    return dict(room)
 
 @app.delete("/rooms/{room_id}", tags=["Rooms"])
 async def delete_room(room_id: str):
     """Delete a chat room (Admin only)"""
-    if room_id not in rooms:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM rooms WHERE id = ?", (room_id,))
+    if not cursor.fetchone():
+        conn.close()
         raise HTTPException(status_code=404, detail="Room not found")
-    del rooms[room_id]
+    cursor.execute("DELETE FROM rooms WHERE id = ?", (room_id,))
+    conn.commit()
+    conn.close()
     return {"message": "Room deleted"}
 
 # ========== USER ENDPOINTS ==========
@@ -216,98 +225,170 @@ async def delete_room(room_id: str):
 @app.post("/users", tags=["Users"])
 async def create_user(user: User):
     """Create a new user"""
-    if user.id in users:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM users WHERE id = ?", (user.id,))
+    if cursor.fetchone():
+        conn.close()
         raise HTTPException(status_code=400, detail="User already exists")
-    users[user.id] = user
+    cursor.execute(
+        "INSERT INTO users (id, username, password, role) VALUES (?, ?, ?, ?)",
+        (user.id, user.username, user.password, user.role)
+    )
+    conn.commit()
+    conn.close()
     return {"message": "User created", "user": user}
 
 @app.post("/users/{user_id}/join-room", tags=["Users"])
 async def join_room(user_id: str, request: JoinRoomRequest):
     """Join a chat room"""
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
     # Auto-create user if not exists
-    if user_id not in users:
-        user = User(id=user_id, username=request.username, password="",role="user")
-        users[user_id] = user
-    
-    if request.room_id not in rooms:
+    cursor.execute("SELECT id FROM users WHERE id = ?", (user_id,))
+    if not cursor.fetchone():
+        cursor.execute(
+            "INSERT INTO users (id, username, password, role) VALUES (?, ?, ?, ?)",
+            (user_id, request.username, "", "user")
+        )
+ 
+    # Check room exists
+    cursor.execute("SELECT * FROM rooms WHERE id = ?", (request.room_id,))
+    room = cursor.fetchone()
+    if not room:
+        conn.close()
         raise HTTPException(status_code=404, detail="Room not found")
-    
-    user = users[user_id]
-    room = rooms[request.room_id]
-    
-    if user.is_banned or user_id in banned_users:
+ 
+    # Check if banned
+    cursor.execute("SELECT user_id FROM banned_users WHERE user_id = ?", (user_id,))
+    if cursor.fetchone():
+        conn.close()
         raise HTTPException(status_code=403, detail="User is banned from this room")
-    
-    if room.current_users >= room.max_users:
+ 
+    # Check if room is full
+    if room["current_users"] >= room["max_users"]:
+        conn.close()
         raise HTTPException(status_code=400, detail="Room is full")
-    
-    if user_id not in room.users:
-        room.users.append(user_id)
-        room.current_users += 1
-    
-    return {"message": "Joined room", "room": room}
+ 
+    # Add user to room if not already in it
+    cursor.execute(
+        "INSERT OR IGNORE INTO room_users (room_id, user_id) VALUES (?, ?)",
+        (request.room_id, user_id)
+    )
+    # update current_users count from actual rows
+    cursor.execute(
+        "UPDATE rooms SET current_users = (SELECT COUNT(*) FROM room_users WHERE room_id = ?) WHERE id = ?",
+        (request.room_id, request.room_id)
+    )
+    conn.commit()
+ 
+    cursor.execute("SELECT * FROM rooms WHERE id = ?", (request.room_id,))
+    updated_room = dict(cursor.fetchone())
+    conn.close()
+    return {"message": "Joined room", "room": updated_room}
 
 @app.post("/users/{user_id}/leave-room/{room_id}", tags=["Users"])
 async def leave_room(user_id: str, room_id: str):
     """Leave a chat room"""
-    if room_id not in rooms:
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("SELECT id FROM rooms WHERE id = ?", (room_id,))
+    if not cursor.fetchone():
+        conn.close()
         raise HTTPException(status_code=404, detail="Room not found")
-    
-    room = rooms[room_id]
-    if user_id in room.users:
-        room.users.remove(user_id)
-        room.current_users -= 1
-    
+ 
+    cursor.execute("DELETE FROM room_users WHERE room_id = ? AND user_id = ?", (room_id, user_id))
+    cursor.execute(
+        "UPDATE rooms SET current_users = (SELECT COUNT(*) FROM room_users WHERE room_id = ?) WHERE id = ?",
+        (room_id, room_id)
+    )
+    conn.commit()
+    conn.close()
     return {"message": "Left room"}
 
 @app.get("/rooms/{room_id}/users", tags=["Users"])
 async def get_room_users(room_id: str):
     """Get list of users in a room"""
-    if room_id not in rooms:
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("SELECT id FROM rooms WHERE id = ?", (room_id,))
+    if not cursor.fetchone():
+        conn.close()
         raise HTTPException(status_code=404, detail="Room not found")
-    
-    room = rooms[room_id]
-    room_users = [users[uid] for uid in room.users if uid in users]
-    return room_users
+ 
+    cursor.execute("""
+        SELECT u.id, u.username, u.role, u.is_banned
+        FROM users u
+        JOIN room_users ru ON u.id = ru.user_id
+        WHERE ru.room_id = ?
+    """, (room_id,))
+    users = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return users
 
 @app.post("/users/{user_id}/kick/{target_user_id}/room/{room_id}", tags=["Users"])
 async def kick_user(user_id: str, target_user_id: str, room_id: str):
     """Kick a user from a room (Admin only)"""
-    if user_id not in users or users[user_id].role != "admin":
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("SELECT role FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
+    if not user or user["role"] != "admin":
+        conn.close()
         raise HTTPException(status_code=403, detail="Admin privilege required")
-    if room_id not in rooms:
+ 
+    cursor.execute("SELECT id FROM rooms WHERE id = ?", (room_id,))
+    if not cursor.fetchone():
+        conn.close()
         raise HTTPException(status_code=404, detail="Room not found")
-    
-    room = rooms[room_id]
-    if target_user_id in room.users:
-        room.users.remove(target_user_id)
-        room.current_users -= 1
-    
+ 
+    cursor.execute("DELETE FROM room_users WHERE room_id = ? AND user_id = ?", (room_id, target_user_id))
+    cursor.execute(
+        "UPDATE rooms SET current_users = (SELECT COUNT(*) FROM room_users WHERE room_id = ?) WHERE id = ?",
+        (room_id, room_id)
+    )
+    conn.commit()
+    conn.close()
     return {"message": f"User {target_user_id} kicked from room"}
 
 @app.post("/users/{user_id}/ban/{target_user_id}", tags=["Users"])
 async def ban_user(user_id: str, target_user_id: str):
     """Ban a user (Admin only)"""
-    if user_id not in users or users[user_id].role != "admin":
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("SELECT role FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
+    if not user or user["role"] != "admin":
+        conn.close()
         raise HTTPException(status_code=403, detail="Admin privilege required")
-    
-    banned_users.add(target_user_id)
-    if target_user_id in users:
-        users[target_user_id].is_banned = True
-    
+ 
+    cursor.execute("INSERT OR IGNORE INTO banned_users (user_id) VALUES (?)", (target_user_id,))
+    cursor.execute("UPDATE users SET is_banned = 1 WHERE id = ?", (target_user_id,))
+    conn.commit()
+    conn.close()
     return {"message": f"User {target_user_id} banned"}
 
 @app.post("/users/{user_id}/unban/{target_user_id}", tags=["Users"])
 async def unban_user(user_id: str, target_user_id: str):
     """Unban a user (Admin only)"""
-    if user_id not in users or users[user_id].role != "admin":
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("SELECT role FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
+    if not user or user["role"] != "admin":
+        conn.close()
         raise HTTPException(status_code=403, detail="Admin privilege required")
-    
-    if target_user_id in banned_users:
-        banned_users.remove(target_user_id)
-    if target_user_id in users:
-        users[target_user_id].is_banned = False
-    
+ 
+    cursor.execute("DELETE FROM banned_users WHERE user_id = ?", (target_user_id,))
+    cursor.execute("UPDATE users SET is_banned = 0 WHERE id = ?", (target_user_id,))
+    conn.commit()
+    conn.close()
     return {"message": f"User {target_user_id} unbanned"}
 
 # ========== MESSAGE ENDPOINTS ==========
@@ -315,68 +396,92 @@ async def unban_user(user_id: str, target_user_id: str):
 @app.post("/rooms/{room_id}/messages", tags=["Messages"])
 async def send_message(room_id: str, request: SendMessageRequest):
     """Send a message to a room"""
-    if room_id not in rooms:
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("SELECT id FROM rooms WHERE id = ?", (room_id,))
+    if not cursor.fetchone():
+        conn.close()
         raise HTTPException(status_code=404, detail="Room not found")
-    if request.user_id not in users:
+ 
+    cursor.execute("SELECT * FROM users WHERE id = ?", (request.user_id,))
+    user = cursor.fetchone()
+    if not user:
+        conn.close()
         raise HTTPException(status_code=404, detail="User not found")
-    
-    user = users[request.user_id]
-    if user.is_banned:
+    if user["is_banned"]:
+        conn.close()
         raise HTTPException(status_code=403, detail="User is banned")
-    
-    room = rooms[room_id]
-    
-    # Filter message
+ 
     filtered_text, is_filtered = filter_message(request.text)
-    
-    # Create message
-    message = Message(
-        id=str(uuid.uuid4()),
-        room_id=room_id,
-        user_id=request.user_id,
-        username=request.username,
-        text=filtered_text,
-        timestamp=datetime.now(),
-        is_filtered=is_filtered
-    )
-    
-    room.messages.append(message)
-    
-    return {"message": "Message sent", "data": message, "was_filtered": is_filtered}
+    message_id = str(uuid.uuid4())
+    timestamp = datetime.now().isoformat()
+ 
+    cursor.execute("""
+        INSERT INTO messages (id, room_id, user_id, username, text, timestamp, is_filtered)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (message_id, room_id, request.user_id, request.username, filtered_text, timestamp, int(is_filtered)))
+    conn.commit()
+    conn.close()
+    return {"message": "Message sent", "was_filtered": is_filtered}
 
 @app.get("/rooms/{room_id}/messages", tags=["Messages"])
 async def get_messages(room_id: str, limit: int = 50):
     """Get messages from a room"""
-    if room_id not in rooms:
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("SELECT id FROM rooms WHERE id = ?", (room_id,))
+    if not cursor.fetchone():
+        conn.close()
         raise HTTPException(status_code=404, detail="Room not found")
-    
-    room = rooms[room_id]
-    return room.messages[-limit:]
+ 
+    cursor.execute("""
+        SELECT * FROM messages WHERE room_id = ?
+        ORDER BY timestamp ASC
+        LIMIT ?
+    """, (room_id, limit))
+    messages = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return messages
 
 # ========== BAD WORDS ENDPOINTS ==========
 
 @app.get("/bad-words", tags=["BadWords"])
 async def get_bad_words(user_id: str):
     """Get list of bad words (Admin only)"""
-    if user_id not in users or users[user_id].role != "admin":
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT role FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
+    conn.close()
+    if not user or user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin privilege required")
     return bad_words
 
 @app.post("/bad-words", tags=["BadWords"])
 async def add_bad_word(user_id: str, bad_word: BadWord):
     """Add a bad word (Admin only)"""
-    if user_id not in users or users[user_id].role != "admin":
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT role FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
+    conn.close()
+    if not user or user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin privilege required")
-    
     bad_words.append(bad_word)
     return {"message": "Bad word added", "word": bad_word}
 
 @app.delete("/bad-words/{word}", tags=["BadWords"])
 async def remove_bad_word(user_id: str, word: str):
     """Remove a bad word (Admin only)"""
-    if user_id not in users or users[user_id].role != "admin":
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT role FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
+    conn.close()
+    if not user or user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin privilege required")
-    
     global bad_words
     bad_words = [bw for bw in bad_words if bw.word.lower() != word.lower()]
     return {"message": "Bad word removed"}
@@ -386,70 +491,88 @@ async def remove_bad_word(user_id: str, word: str):
 @app.websocket("/ws/{room_id}/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, room_id: str, user_id: str):
     """WebSocket endpoint for real-time chat"""
-    if room_id not in rooms:
+    conn = get_connection()
+    cursor = conn.cursor()
+ 
+    cursor.execute("SELECT id FROM rooms WHERE id = ?", (room_id,))
+    if not cursor.fetchone():
+        conn.close()
         await websocket.close(code=1008, reason="Room not found")
         return
-    
-    # Auto-create user if not exists
-    if user_id not in users:
+ 
+    # Auto-create guest user if not in DB
+    cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+    user_row = cursor.fetchone()
+    if not user_row:
         username = f"User_{user_id[:8]}"
-        users[user_id] = User(id=user_id, username=username, password="",role="user")
-    
-    user = users[user_id]
-    
-    if user.is_banned:
+        cursor.execute(
+            "INSERT INTO users (id, username, password, role) VALUES (?, ?, ?, ?)",
+            (user_id, username, "", "user")
+        )
+        conn.commit()
+        cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+        user_row = cursor.fetchone()
+ 
+    if user_row["is_banned"]:
+        conn.close()
         await websocket.close(code=1008, reason="User is banned")
         return
-    
+ 
+    username = user_row["username"]
+    conn.close()
+ 
     await manager.connect(room_id, websocket)
-    
+ 
     try:
         while True:
             data = await websocket.receive_text()
             message_data = json.loads(data)
-            
-            user = users[user_id]
-            if user.is_banned:
+ 
+            # Re-check ban status on every message
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT is_banned FROM users WHERE id = ?", (user_id,))
+            current_user = cursor.fetchone()
+            conn.close()
+ 
+            if current_user and current_user["is_banned"]:
                 await websocket.send_json({"error": "You are banned"})
                 continue
-            
-            # Filter message
+ 
             filtered_text, is_filtered = filter_message(message_data.get("text", ""))
-            
-            # Create and store message
-            message = Message(
-                id=str(uuid.uuid4()),
-                room_id=room_id,
-                user_id=user_id,
-                username=users[user_id].username,
-                text=filtered_text,
-                timestamp=datetime.now(),
-                is_filtered=is_filtered
-            )
-            
-            rooms[room_id].messages.append(message)
-            
-            # Broadcast to all users in room
+            message_id = str(uuid.uuid4())
+            timestamp = datetime.now()
+ 
+            # Save message to DB
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO messages (id, room_id, user_id, username, text, timestamp, is_filtered)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (message_id, room_id, user_id, username, filtered_text, timestamp.isoformat(), int(is_filtered)))
+            conn.commit()
+            conn.close()
+ 
             await manager.broadcast(room_id, {
                 "type": "message",
                 "message": {
-                    "id": message.id,
-                    "username": message.username,
-                    "text": message.text,
-                    "timestamp": message.timestamp.isoformat(),
+                    "id": message_id,
+                    "username": username,
+                    "text": filtered_text,
+                    "timestamp": timestamp.isoformat(),
                     "is_filtered": is_filtered
                 }
             })
-    
+ 
     except Exception as e:
         print(f"WebSocket error: {e}")
-    
+ 
     finally:
         manager.disconnect(room_id, websocket)
         await manager.broadcast(room_id, {
             "type": "user_left",
             "user_id": user_id,
-            "username": users[user_id].username
+            "username": username
         })
 
 # ========== HEALTH CHECK ==========
@@ -457,20 +580,20 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, user_id: str):
 @app.get("/health", tags=["Health"])
 async def health_check():
     """Health check endpoint"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM rooms")
+    rooms_count = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM users")
+    users_count = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM banned_users")
+    banned_count = cursor.fetchone()[0]
+    conn.close()
     return {
         "status": "ok",
-        "rooms_count": len(rooms),
-        "users_count": len(users),
-        "banned_users_count": len(banned_users)
-    }
-
-@app.get("/", tags=["Root"])
-async def root():
-    """Root endpoint"""
-    return {
-        "message": "Chatroom Messenger Filter Backend API",
-        "docs": "/docs",
-        "version": "1.0.0"
+        "rooms_count": rooms_count,
+        "users_count": users_count,
+        "banned_users_count": banned_count
     }
 
 
