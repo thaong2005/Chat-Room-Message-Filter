@@ -329,6 +329,18 @@ async def get_room_users(room_id: str):
     conn.close()
     return users
 
+@app.get("/users", tags=["Users"])
+async def get_all_users():
+    """Get list of all users"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT id, username, role, is_banned FROM users ORDER BY username")
+    users = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    
+    return {"users": users, "count": len(users)}
+
 @app.post("/users/{user_id}/kick/{target_user_id}/room/{room_id}", tags=["Users"])
 async def kick_user(user_id: str, target_user_id: str, room_id: str):
     """Kick a user from a room (Admin only)"""
@@ -574,6 +586,115 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, user_id: str):
             "user_id": user_id,
             "username": username
         })
+
+# ========== BAD WORDS MANAGEMENT ==========
+
+def get_bad_words_file_path():
+    """Get the path to bad_words.txt file"""
+    return Path(__file__).resolve().parent / "bad_words.txt"
+
+@app.get("/badwords", tags=["BadWords"])
+async def get_bad_words():
+    """Get all bad words"""
+    try:
+        file_path = get_bad_words_file_path()
+        bad_words_list = []
+        
+        if file_path.exists():
+            with open(file_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    word = line.strip()
+                    if word and not word.startswith('#'):
+                        bad_words_list.append(word)
+        
+        return {"bad_words": bad_words_list, "count": len(bad_words_list)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading bad words: {str(e)}")
+
+@app.post("/badwords", tags=["BadWords"])
+async def add_bad_word(word: str):
+    """Add a new bad word"""
+    try:
+        if not word or len(word.strip()) == 0:
+            raise HTTPException(status_code=400, detail="Word cannot be empty")
+        
+        word = word.strip().lower()
+        file_path = get_bad_words_file_path()
+        
+        # Read existing words
+        existing_words = set()
+        if file_path.exists():
+            with open(file_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    existing_word = line.strip()
+                    if existing_word and not existing_word.startswith('#'):
+                        existing_words.add(existing_word.lower())
+        
+        # Check if word already exists
+        if word in existing_words:
+            raise HTTPException(status_code=400, detail="Word already exists in bad words list")
+        
+        # Add new word
+        with open(file_path, 'a', encoding='utf-8') as f:
+            f.write(f"{word}\n")
+        
+        # Reload filter
+        global bad_word_filter, bad_words_list
+        bad_words_list = load_bad_words_from_file(str(file_path))
+        bad_word_filter = BadWordFilter(bad_words_list=bad_words_list)
+        
+        return {"message": f"Bad word '{word}' added successfully", "word": word}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error adding bad word: {str(e)}")
+
+@app.delete("/badwords", tags=["BadWords"])
+async def delete_bad_word(word: str):
+    """Delete a bad word"""
+    try:
+        if not word or len(word.strip()) == 0:
+            raise HTTPException(status_code=400, detail="Word cannot be empty")
+        
+        word = word.strip().lower()
+        file_path = get_bad_words_file_path()
+        
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="Bad words file not found")
+        
+        # Read existing words
+        lines = []
+        found = False
+        with open(file_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                existing_word = line.strip()
+                if existing_word.lower() == word:
+                    found = True
+                else:
+                    lines.append(line)
+        
+        if not found:
+            raise HTTPException(status_code=404, detail=f"Word '{word}' not found in bad words list")
+        
+        # Write back without the deleted word
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.writelines(lines)
+        
+        # Reload filter
+        global bad_word_filter, bad_words_list
+        bad_words_list = load_bad_words_from_file(str(file_path))
+        bad_word_filter = BadWordFilter(bad_words_list=bad_words_list)
+        
+        return {"message": f"Bad word '{word}' deleted successfully", "word": word}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting bad word: {str(e)}")
+
+@app.get("/badwords/manage", tags=["BadWords"])
+async def manage_badwords_page() -> FileResponse:
+    """Serve the bad words management page"""
+    return FileResponse(FRONTEND_DIR / "badwords.html")
 
 # ========== HEALTH CHECK ==========
 

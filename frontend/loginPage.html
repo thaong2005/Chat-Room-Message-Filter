@@ -46,7 +46,7 @@
                         placeholder="Enter your password"
                         autocomplete="current-password"
                     />
-                    <button type="button" class="toggle-password" aria-label="Toggle password visibility" onclick="togglePassword('password', this)">
+                    <button type="button" class="toggle-password" aria-label="Show password" onclick="togglePassword('password', this)">
                         👁
                     </button>
                 </div>
@@ -76,6 +76,7 @@
             const isHidden = input.type === 'password';
             input.type = isHidden ? 'text' : 'password';
             btn.textContent = isHidden ? '🙈' : '👁';
+            btn.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
         }
 
         document.getElementById('loginForm').addEventListener('submit', async function (e) {
