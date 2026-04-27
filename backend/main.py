@@ -6,6 +6,8 @@ from fastapi.responses import FileResponse, RedirectResponse
 from typing import Dict, List, Set
 from datetime import datetime
 from db import get_connection, init_db 
+from auth import generate_token, validate_token, validate_admin
+from models import LoginRequest
 
 import json
 import uuid
@@ -124,13 +126,13 @@ async def register() -> FileResponse:
     return FileResponse(FRONTEND_DIR / "registerPage.html")
 
 @app.post("/login", tags=["Auth"])
-async def Login(username: str, password: str):
+async def Login(req: LoginRequest):
     """Login with username and password"""
     conn = get_connection()
     cursor = conn.cursor()
     
     cursor.execute(
-        "SELECT * FROM users WHERE username = ? AND password = ?", (username, password)
+        "SELECT * FROM users WHERE username = ? AND password = ?", (req.username, req.password)
     )
     user = cursor.fetchone()
     conn.close()
@@ -140,7 +142,9 @@ async def Login(username: str, password: str):
     if user["is_banned"]:
         raise HTTPException(status_code=403, detail="Your account is banned")
 
-    return {"message": "Login successful!", "user_id": user["id"], "username": user["username"]}    
+    token = generate_token(user["id"], user["username"], user["role"])
+
+    return {"message": "Login successful!", "user_id": user["id"], "username": user["username"], "role": user["role"], "token": token}    
 
 @app.post("/register", tags=["Auth"])
 async def Register(username: str, password: str):
@@ -168,7 +172,7 @@ async def Register(username: str, password: str):
 # ========== ROOM ENDPOINTS ==========
 
 @app.get("/rooms", tags=["Rooms"])
-async def get_all_rooms():
+async def get_all_rooms(token: dict = Depends(validate_token)):
     """Get all chat rooms"""
     conn = get_connection()
     cursor = conn.cursor()
@@ -178,7 +182,7 @@ async def get_all_rooms():
     return rooms
 
 @app.post("/rooms", tags=["Rooms"])
-async def create_room(room: ChatRoom):
+async def create_room(room: ChatRoom, token: dict = Depends(validate_admin)):
     """Create a new chat room"""
     conn = get_connection()
     cursor = conn.cursor()
@@ -195,7 +199,7 @@ async def create_room(room: ChatRoom):
     return {"message": "Room created", "room": room}
 
 @app.get("/rooms/{room_id}", tags=["Rooms"])
-async def get_room(room_id: str):
+async def get_room(room_id: str, token: dict = Depends(validate_token)):
     """Get a specific chat room"""
     conn = get_connection()
     cursor = conn.cursor()
@@ -207,7 +211,7 @@ async def get_room(room_id: str):
     return dict(room)
 
 @app.delete("/rooms/{room_id}", tags=["Rooms"])
-async def delete_room(room_id: str):
+async def delete_room(room_id: str, token: dict = Depends(validate_admin)):
     """Delete a chat room (Admin only)"""
     conn = get_connection()
     cursor = conn.cursor()
@@ -240,7 +244,7 @@ async def create_user(user: User):
     return {"message": "User created", "user": user}
 
 @app.post("/users/{user_id}/join-room", tags=["Users"])
-async def join_room(user_id: str, request: JoinRoomRequest):
+async def join_room(user_id: str, request: JoinRoomRequest, token: dict = Depends(validate_token)):
     """Join a chat room"""
     conn = get_connection()
     cursor = conn.cursor()
@@ -289,7 +293,7 @@ async def join_room(user_id: str, request: JoinRoomRequest):
     return {"message": "Joined room", "room": updated_room}
 
 @app.post("/users/{user_id}/leave-room/{room_id}", tags=["Users"])
-async def leave_room(user_id: str, room_id: str):
+async def leave_room(user_id: str, room_id: str, token: dict = Depends(validate_token)):
     """Leave a chat room"""
     conn = get_connection()
     cursor = conn.cursor()
@@ -309,7 +313,7 @@ async def leave_room(user_id: str, room_id: str):
     return {"message": "Left room"}
 
 @app.get("/rooms/{room_id}/users", tags=["Users"])
-async def get_room_users(room_id: str):
+async def get_room_users(room_id: str, token: dict = Depends(validate_token)):
     """Get list of users in a room"""
     conn = get_connection()
     cursor = conn.cursor()
@@ -330,7 +334,7 @@ async def get_room_users(room_id: str):
     return users
 
 @app.get("/users", tags=["Users"])
-async def get_all_users():
+async def get_all_users(token: dict = Depends(validate_token)):
     """Get list of all users"""
     conn = get_connection()
     cursor = conn.cursor()
@@ -342,7 +346,7 @@ async def get_all_users():
     return {"users": users, "count": len(users)}
 
 @app.post("/users/{user_id}/kick/{target_user_id}/room/{room_id}", tags=["Users"])
-async def kick_user(user_id: str, target_user_id: str, room_id: str):
+async def kick_user(user_id: str, target_user_id: str, room_id: str, token: dict = Depends(validate_admin)):
     """Kick a user from a room (Admin only)"""
     conn = get_connection()
     cursor = conn.cursor()
@@ -368,7 +372,7 @@ async def kick_user(user_id: str, target_user_id: str, room_id: str):
     return {"message": f"User {target_user_id} kicked from room"}
 
 @app.post("/users/{user_id}/ban/{target_user_id}", tags=["Users"])
-async def ban_user(user_id: str, target_user_id: str):
+async def ban_user(user_id: str, target_user_id: str, token: dict = Depends(validate_admin)):
     """Ban a user (Admin only)"""
     conn = get_connection()
     cursor = conn.cursor()
@@ -386,7 +390,7 @@ async def ban_user(user_id: str, target_user_id: str):
     return {"message": f"User {target_user_id} banned"}
 
 @app.post("/users/{user_id}/unban/{target_user_id}", tags=["Users"])
-async def unban_user(user_id: str, target_user_id: str):
+async def unban_user(user_id: str, target_user_id: str, token: dict = Depends(validate_admin)):
     """Unban a user (Admin only)"""
     conn = get_connection()
     cursor = conn.cursor()
@@ -406,7 +410,7 @@ async def unban_user(user_id: str, target_user_id: str):
 # ========== MESSAGE ENDPOINTS ==========
 
 @app.post("/rooms/{room_id}/messages", tags=["Messages"])
-async def send_message(room_id: str, request: SendMessageRequest):
+async def send_message(room_id: str, request: SendMessageRequest, token: dict = Depends(validate_token)):
     """Send a message to a room"""
     conn = get_connection()
     cursor = conn.cursor()
@@ -438,7 +442,7 @@ async def send_message(room_id: str, request: SendMessageRequest):
     return {"message": "Message sent", "was_filtered": is_filtered}
 
 @app.get("/rooms/{room_id}/messages", tags=["Messages"])
-async def get_messages(room_id: str, limit: int = 50):
+async def get_messages(room_id: str, limit: int = 50, token: dict = Depends(validate_token)):
     """Get messages from a room"""
     conn = get_connection()
     cursor = conn.cursor()
@@ -459,44 +463,44 @@ async def get_messages(room_id: str, limit: int = 50):
 
 # ========== BAD WORDS ENDPOINTS ==========
 
-@app.get("/bad-words", tags=["BadWords"])
-async def get_bad_words(user_id: str):
-    """Get list of bad words (Admin only)"""
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT role FROM users WHERE id = ?", (user_id,))
-    user = cursor.fetchone()
-    conn.close()
-    if not user or user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin privilege required")
-    return bad_words
+# @app.get("/bad-words", tags=["BadWords"])
+# async def get_bad_words(user_id: str, token: dict = Depends(validate_admin)):
+#     """Get list of bad words (Admin only)"""
+#     conn = get_connection()
+#     cursor = conn.cursor()
+#     cursor.execute("SELECT role FROM users WHERE id = ?", (user_id,))
+#     user = cursor.fetchone()
+#     conn.close()
+#     if not user or user["role"] != "admin":
+#         raise HTTPException(status_code=403, detail="Admin privilege required")
+#     return bad_words
 
-@app.post("/bad-words", tags=["BadWords"])
-async def add_bad_word(user_id: str, bad_word: BadWord):
-    """Add a bad word (Admin only)"""
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT role FROM users WHERE id = ?", (user_id,))
-    user = cursor.fetchone()
-    conn.close()
-    if not user or user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin privilege required")
-    bad_words.append(bad_word)
-    return {"message": "Bad word added", "word": bad_word}
+# @app.post("/bad-words", tags=["BadWords"])
+# async def add_bad_word(user_id: str, bad_word: BadWord, token: dict = Depends(validate_admin)):
+#     """Add a bad word (Admin only)"""
+#     conn = get_connection()
+#     cursor = conn.cursor()
+#     cursor.execute("SELECT role FROM users WHERE id = ?", (user_id,))
+#     user = cursor.fetchone()
+#     conn.close()
+#     if not user or user["role"] != "admin":
+#         raise HTTPException(status_code=403, detail="Admin privilege required")
+#     bad_words.append(bad_word)
+#     return {"message": "Bad word added", "word": bad_word}
 
-@app.delete("/bad-words/{word}", tags=["BadWords"])
-async def remove_bad_word(user_id: str, word: str):
-    """Remove a bad word (Admin only)"""
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT role FROM users WHERE id = ?", (user_id,))
-    user = cursor.fetchone()
-    conn.close()
-    if not user or user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Admin privilege required")
-    global bad_words
-    bad_words = [bw for bw in bad_words if bw.word.lower() != word.lower()]
-    return {"message": "Bad word removed"}
+# @app.delete("/bad-words/{word}", tags=["BadWords"])
+# async def remove_bad_word(user_id: str, word: str, token: dict = Depends(validate_admin)):
+#     """Remove a bad word (Admin only)"""
+#     conn = get_connection()
+#     cursor = conn.cursor()
+#     cursor.execute("SELECT role FROM users WHERE id = ?", (user_id,))
+#     user = cursor.fetchone()
+#     conn.close()
+#     if not user or user["role"] != "admin":
+#         raise HTTPException(status_code=403, detail="Admin privilege required")
+#     global bad_words
+#     bad_words = [bw for bw in bad_words if bw.word.lower() != word.lower()]
+#     return {"message": "Bad word removed"}
 
 # ========== WEBSOCKET (Real-time Chat) ==========
 
@@ -594,7 +598,7 @@ def get_bad_words_file_path():
     return Path(__file__).resolve().parent / "bad_words.txt"
 
 @app.get("/badwords", tags=["BadWords"])
-async def get_bad_words():
+async def get_bad_words(token: dict = Depends(validate_admin)):
     """Get all bad words"""
     try:
         file_path = get_bad_words_file_path()
@@ -612,7 +616,7 @@ async def get_bad_words():
         raise HTTPException(status_code=500, detail=f"Error reading bad words: {str(e)}")
 
 @app.post("/badwords", tags=["BadWords"])
-async def add_bad_word(word: str):
+async def add_bad_word(word: str, token: dict = Depends(validate_admin)):
     """Add a new bad word"""
     try:
         if not word or len(word.strip()) == 0:
@@ -650,7 +654,7 @@ async def add_bad_word(word: str):
         raise HTTPException(status_code=500, detail=f"Error adding bad word: {str(e)}")
 
 @app.delete("/badwords", tags=["BadWords"])
-async def delete_bad_word(word: str):
+async def delete_bad_word(word: str, token: dict = Depends(validate_admin)):
     """Delete a bad word"""
     try:
         if not word or len(word.strip()) == 0:
