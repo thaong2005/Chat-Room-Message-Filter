@@ -51,8 +51,15 @@ function renderUI(words) {
 // 1. Load data
 async function loadBadWords() {
     try {
+        const token = localStorage.getItem('token');
+
         showMessage('Loading data...', 'loading');
-        const response = await fetch(`${API_BASE_URL}/badwords`);
+        const response = await fetch(`${API_BASE_URL}/badwords`, {
+            method: "GET",
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        });
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         
         const data = await response.json();
@@ -75,9 +82,14 @@ async function addBadWord(word) {
     }
 
     try {
+        const token = localStorage.getItem('token');
+
         showMessage('⏳ Adding...', 'loading');
         const response = await fetch(`${API_BASE_URL}/badwords?word=${encodeURIComponent(trimmedWord)}`, {
-            method: 'POST'
+            method: 'POST',
+            headers: {
+                "Authorization": "Bearer " + token
+            }
         });
         
         const data = await response.json();
@@ -96,9 +108,14 @@ async function deleteBadWord(word) {
     if (!confirm(`Delete "${word}"?`)) return;
     
     try {
+        const token = localStorage.getItem('token')
+
         showMessage('⏳ Deleting...', 'loading');
         const response = await fetch(`${API_BASE_URL}/badwords?word=${encodeURIComponent(word)}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: {
+                "Authorization": "Bearer " + token 
+            }
         });
         
         if (!response.ok) {

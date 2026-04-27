@@ -53,8 +53,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Load initial messages
     async function loadMessages(roomId) {
+        const token = localStorage.getItem('token')
         try {
-            const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/messages?limit=50`);
+
+            const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/messages?limit=50`, {
+                method: "GET",
+                headers: "Bearer " + token
+            });
             if (response.ok) {
                 const messages = await response.json();
                 messages.forEach(msg => {
@@ -112,11 +117,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Send message via REST API (fallback)
     async function sendMessageViaAPI(roomId, text) {
+        const token = localStorage.getItem('token')
         try {
+
             const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/messages`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    "Authorization": "Bearer " + token
                 },
                 body: JSON.stringify({
                     room_id: roomId,

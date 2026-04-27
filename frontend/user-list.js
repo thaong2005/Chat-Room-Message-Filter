@@ -34,7 +34,14 @@ function getColorFromUsername(username) {
 // Load all users
 async function loadUsers() {
     try {
-        const response = await fetch(`${API_BASE_URL}/users`);
+        const token = localStorage.getItem('token')
+
+        const response = await fetch(`${API_BASE_URL}/users`, {
+            method: "GET",
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        });
         
         if (!response.ok) {
             if (response.status === 404) {

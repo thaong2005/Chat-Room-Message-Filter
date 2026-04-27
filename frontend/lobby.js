@@ -70,11 +70,21 @@ document.addEventListener('DOMContentLoaded', function() {
 async function loadRooms() {
     const roomsList = document.getElementById('rooms-list');
     roomsList.innerHTML = '';
+    const token = localStorage.getItem('token');
+    console.log("Token:", token);
 
+    
     try {
         // Try to fetch from backend
-        const response = await fetch(`${API_BASE_URL}/rooms`);
-        if (!response.ok) throw new Error('Backend not available');
+
+        const response = await fetch(`${API_BASE_URL}/rooms`, {
+            method: "GET",
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        });
+        console.log(response.status);
+        if (!response.ok) throw new Error();
         
         const rooms = await response.json();
         if (rooms.length === 0) {
