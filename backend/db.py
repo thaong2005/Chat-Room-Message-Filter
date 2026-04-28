@@ -47,9 +47,6 @@ def init_db():
             PRIMARY KEY (room_id, user_id)
         );
 
-        CREATE TABLE IF NOT EXISTS banned_users (
-            user_id TEXT PRIMARY KEY
-        );
     """)
 
     conn.commit()

@@ -1,0 +1,17 @@
+{
+  "name": "chat-room-message-filter",
+  "version": "1.0.0",
+  "description": "A real-time chat application with integrated profanity and bad-word filtering.",
+  "scripts": {
+    "postinstall": "cd backend && pip install -r requirements.txt",
+    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "start:backend": "cd backend && python main.py",
+    "start:frontend": "npx --yes serve frontend -p 3000"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "devDependencies": {},
+  "author": "huyhoang",
+  "license": "ISC"
+}

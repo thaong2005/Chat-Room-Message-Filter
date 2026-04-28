@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User List</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="chatRoomStyle.css">
+    <style>
+        .user-list-wrapper {
+            padding: 16px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .user-item {
+            background: #232428;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-left: 3px solid var(--discord-blurple);
+            transition: all 0.2s;
+        }
+
+        .user-item:hover {
+            background: rgba(88, 101, 242, 0.1);
+            transform: translateX(4px);
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .user-info {
+            flex: 1;
+        }
+
+        .user-username {
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 4px;
+        }
+
+        .user-role {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .user-status {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--online-green);
+            margin-left: 8px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+
+        .stats-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: rgba(88, 101, 242, 0.1);
+            padding: 16px;
+            border-radius: 8px;
+            border-left: 3px solid var(--discord-blurple);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--discord-blurple);
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--discord-blurple);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="lobby-container">
+        <!-- Header -->
+        <div class="chat-header">
+            <button onclick="window.location.href='index.html'" class="back-btn">← Back</button>
+            <h2 id="room-name">👥 User List</h2>
+        </div>
+
+        <!-- Content -->
+        <div style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column;">
+            <!-- Stats -->
+            <div class="stats-section">
+                <div class="stat-card">
+                    <div class="stat-label">Total Users</div>
+                    <div class="stat-value" id="totalUsers">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Status</div>
+                    <div class="stat-value" style="color: var(--online-green);" id="statusText">Loading...</div>
+                </div>
+            </div>
+
+            <!-- User List -->
+            <div class="user-list-wrapper" id="userList">
+                <div class="message system">
+                    <span class="loading-spinner"></span>Loading users...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="user-list.js"></script>
+</body>
+</html>
