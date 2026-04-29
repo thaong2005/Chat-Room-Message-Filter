@@ -11,6 +11,7 @@ from models import LoginRequest
 
 import json
 import uuid
+import random
 
 from models import (
     User, Message, ChatRoom, BadWord, 
@@ -507,6 +508,9 @@ async def get_messages(room_id: str, limit: int = 50, token: dict = Depends(vali
 @app.websocket("/ws/{room_id}/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, room_id: str, user_id: str):
     """WebSocket endpoint for real-time chat"""
+    # Get username from query parameter (passed from frontend)
+    requested_username = websocket.query_params.get("username", f"User_{user_id[:8]}")
+    
     conn = get_connection()
     cursor = conn.cursor()
  
@@ -520,7 +524,19 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, user_id: str):
     cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
     user_row = cursor.fetchone()
     if not user_row:
-        username = f"User_{user_id[:8]}"
+        # Try to use requested username, if duplicate add random suffix
+        username = requested_username
+        attempt = 0
+        while attempt < 10:
+            cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
+            if not cursor.fetchone():
+                # Username is available
+                break
+            # Username taken, try with suffix
+            attempt += 1
+            username = f"{requested_username}_{random.randint(1000, 9999)}"
+        
+        # Create new user with available username
         cursor.execute(
             "INSERT INTO users (id, username, password, role) VALUES (?, ?, ?, ?)",
             (user_id, username, "", "user")
@@ -528,13 +544,15 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, user_id: str):
         conn.commit()
         cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
         user_row = cursor.fetchone()
+    else:
+        # If user exists, use their stored username
+        username = user_row["username"]
  
     if user_row["is_banned"]:
         conn.close()
         await websocket.close(code=1008, reason="User is banned")
         return
  
-    username = user_row["username"]
     conn.close()
  
     await manager.connect(room_id, websocket)

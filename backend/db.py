@@ -39,6 +39,7 @@ def init_db():
             timestamp TEXT NOT NULL,
             is_filtered INTEGER DEFAULT 0,
             FOREIGN KEY (room_id) REFERENCES rooms(id)
+                        
         );
 
         CREATE TABLE IF NOT EXISTS room_users (

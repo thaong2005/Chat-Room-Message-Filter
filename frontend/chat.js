@@ -10,13 +10,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const roomId = params.get('room') || 'room1';
     const roomName = params.get('roomName') || 'Room';
     
-    // Setup current user (demo: use localStorage)
+    // Setup current user from login or prompt
+    let userId = localStorage.getItem('userId');
+    let username = localStorage.getItem('username');
+    
+    console.log('📌 DEBUG - localStorage:', { userId, username }); // DEBUG
+    
+    // If no user data in localStorage, prompt for username
+    if (!userId || !username) {
+        username = prompt('Enter your username:') || `Guest_${Math.random().toString(36).substr(2, 5)}`;
+        userId = `user_${Math.random().toString(36).substr(2, 9)}`;
+        localStorage.setItem('userId', userId);
+        localStorage.setItem('username', username);
+        console.log('📌 DEBUG - Prompted username:', { userId, username }); // DEBUG
+    }
+    
     currentUser = {
-        id: localStorage.getItem('userId') || `user_${Math.random().toString(36).substr(2, 9)}`,
-        username: localStorage.getItem('username') || `User_${Math.random().toString(36).substr(2, 5).toUpperCase()}`
+        id: userId,
+        username: username
     };
-    localStorage.setItem('userId', currentUser.id);
-    localStorage.setItem('username', currentUser.username);
     
     currentRoom = {
         id: roomId,
@@ -79,8 +91,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Connect to WebSocket
     function connectWebSocket(roomId) {
-        const wsUrl = `${WS_BASE_URL}/ws/${roomId}/${currentUser.id}`;
+        const wsUrl = `${WS_BASE_URL}/ws/${roomId}/${currentUser.id}?username=${encodeURIComponent(currentUser.username)}`;
         console.log('Connecting to WebSocket:', wsUrl);
+        console.log('✓ Current User:', currentUser); // DEBUG
         
         ws = new WebSocket(wsUrl);
 
