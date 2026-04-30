@@ -105,6 +105,9 @@ async function loadUsers() {
 
 // Load users on page load
 document.addEventListener('DOMContentLoaded', () => {
+    const token = requireAuth();
+    if (!token) return;
+
     loadUsers();
     // Refresh every 5 seconds
     setInterval(loadUsers, 5000);

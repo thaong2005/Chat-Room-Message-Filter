@@ -6,6 +6,10 @@ let currentRoom = null;
 let ws = null;
 
 document.addEventListener('DOMContentLoaded', function() {
+    const token = requireAuth();
+    if (!token) return;
+
+
     const params = new URLSearchParams(window.location.search);
     const roomId = params.get('room') || 'room1';
     const roomName = params.get('roomName') || 'Room';

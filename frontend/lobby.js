@@ -63,6 +63,18 @@ const demoRooms = [
 ];
 
 document.addEventListener('DOMContentLoaded', function() {
+    // check if user is logged in 
+    const token = requireAuth();
+    if (!token) {
+        return;
+    }
+
+    // manage bad words for admin only
+    const role = localStorage.getItem('role');
+    if (role != 'admin') {
+        document.getElementById('manage-badwords').style.display = "none";
+    }
+
     loadRooms();
     setupSearch();
 });
@@ -83,7 +95,11 @@ async function loadRooms() {
                 "Authorization": "Bearer " + token
             }
         });
-        console.log(response.status);
+        if (response.status === 401) {
+            logout(); // token expired, log out user
+            return;
+        }
+
         if (!response.ok) throw new Error();
         
         const rooms = await response.json();

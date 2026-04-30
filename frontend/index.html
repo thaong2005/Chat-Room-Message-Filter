@@ -152,7 +152,7 @@
                         <img src="https://cdn-icons-png.flaticon.com/512/563/563541.png" alt="Menu">
                     </button>
                     <div class="settings-dropdown" id="settingsDropdown">
-                        <a href="/badwords.html">⚙️ Manage Bad Words</a>
+                        <a id="manage-badwords" href="/badwords.html">⚙️ Manage Bad Words</a>
                         <div class="settings-dropdown-divider"></div>
                         <a href="/user-list.html">👥 View User List</a>
                     </div>
@@ -171,12 +171,13 @@
         </div>
     </div>
 
+    <script src="auth.js"></script>
     <script src="lobby.js"></script>
     <script>
         // Logout button
         const logoutBtn = document.getElementById('logoutBtn');
-        logoutBtn.addEventListener('click', () => {
-            window.location.href = '/loginPage.html';
+        logoutBtn.addEventListener('click', function() {
+            logout();
         });
 
         // Settings menu toggle
