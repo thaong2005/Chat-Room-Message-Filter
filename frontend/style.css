@@ -224,3 +224,221 @@ body {
 .btn-create:hover {
     background: #4752c4;
 }
+
+/* ========== CREATE ROOM MODAL ========== */
+ 
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+ 
+.modal-overlay.active {
+    display: flex;
+}
+ 
+.modal-box {
+    background: #2b2d31;
+    border-radius: 12px;
+    padding: 32px;
+    width: 90%;
+    max-width: 440px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    animation: modalSlideUp 0.2s ease forwards;
+}
+ 
+@keyframes modalSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+ 
+.modal-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: #f2f3f5;
+}
+ 
+.modal-subtitle {
+    color: #949ba4;
+    font-size: 13px;
+    margin-bottom: 24px;
+}
+ 
+.modal-error {
+    display: none;
+    color: #ed4245;
+    font-size: 13px;
+    margin-bottom: 12px;
+    text-align: center;
+}
+ 
+/* ========== MODAL FORM FIELDS ========== */
+ 
+.modal-form-group {
+    margin-bottom: 16px;
+}
+ 
+.modal-form-group:last-of-type {
+    margin-bottom: 24px;
+}
+ 
+.modal-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #949ba4;
+    margin-bottom: 6px;
+}
+ 
+.modal-label .required {
+    color: #ed4245;
+    margin-left: 2px;
+}
+ 
+.modal-input {
+    width: 100%;
+    background: #1e1f22;
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    color: #f2f3f5;
+    padding: 10px 12px;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    font-family: inherit;
+}
+ 
+.modal-input::placeholder {
+    color: #5c5f66;
+}
+ 
+.modal-input:focus {
+    border-color: #5865f2;
+    box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.2);
+}
+ 
+.modal-input.error {
+    border-color: #ed4245;
+}
+ 
+/* ========== MODAL BUTTONS ========== */
+ 
+.modal-actions {
+    display: flex;
+    gap: 10px;
+}
+ 
+.btn-cancel {
+    flex: 1;
+    background: #4e5058;
+    color: white;
+    border: none;
+    padding: 11px;
+    border-radius: 4px;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-family: inherit;
+}
+ 
+.btn-cancel:hover {
+    background: #6d6f78;
+}
+ 
+.btn-confirm {
+    flex: 1;
+    background: #5865f2;
+    color: white;
+    border: none;
+    padding: 11px;
+    border-radius: 4px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-family: inherit;
+}
+ 
+.btn-confirm:hover {
+    background: #4752c4;
+}
+ 
+.btn-confirm:disabled {
+    background: #3c45a5;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* ========== ROOM 3-DOT MENU ========== */
+
+.room-menu-container {
+    position: relative;
+}
+
+.room-menu-btn {
+    background: none;
+    border: none;
+    color: #949ba4;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    line-height: 1;
+    transition: background 0.2s, color 0.2s;
+}
+
+.room-menu-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #f2f3f5;
+}
+
+.room-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: #232428;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    min-width: 160px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    margin-top: 4px;
+    animation: slideDown 0.15s ease-out;
+}
+
+.room-dropdown.active {
+    display: block;
+}
+
+.room-dropdown button {
+    display: block;
+    width: 100%;
+    padding: 10px 14px;
+    text-align: left;
+    background: none;
+    border: none;
+    color: #ed4245;
+    cursor: pointer;
+    font-size: 14px;
+    border-radius: 8px;
+    transition: background 0.2s;
+    font-family: inherit;
+}
+
+.room-dropdown button:hover {
+    background: rgba(237, 66, 69, 0.15);
+}
