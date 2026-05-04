@@ -12,7 +12,7 @@ from models import LoginRequest
 import json
 import uuid
 import random
-
+import hashlib
 from models import (
     User, Message, ChatRoom, BadWord, 
     JoinRoomRequest, SendMessageRequest
@@ -132,8 +132,11 @@ async def Login(req: LoginRequest):
     conn = get_connection()
     cursor = conn.cursor()
     
+    # Hash password
+    hashed_password = hashlib.sha256(req.password.encode()).hexdigest()
+    
     cursor.execute(
-        "SELECT * FROM users WHERE username = ? AND password = ?", (req.username, req.password)
+        "SELECT * FROM users WHERE username = ? AND password = ?", (req.username, hashed_password)
     )
     user = cursor.fetchone()
     conn.close()
@@ -160,9 +163,10 @@ async def Register(username: str, password: str):
         raise HTTPException(status_code=400, detail="Account already exists. Pick another")
 
     user_id = str(uuid.uuid4())
+    hashed_password = hashlib.sha256(password.encode()).hexdigest()
     cursor.execute(
         "INSERT INTO users (id, username, password, role) VALUES (?, ?, ?, ?)",
-        (user_id, username, password, "user")
+        (user_id, username, hashed_password, "user")
     )
     conn.commit()
     conn.close()
@@ -226,6 +230,70 @@ async def delete_room(room_id: str, token: dict = Depends(validate_admin)):
     return {"message": "Room deleted"}
 
 # ========== USER ENDPOINTS ==========
+
+@app.get("/users", tags=["Users"])
+async def get_all_users(token: dict = Depends(validate_token)):
+    """Get all users (admin can see all, regular users see active users)"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, username, role, is_banned FROM users")
+    users = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return {"users": users}
+
+@app.post("/users/{user_id}/ban", tags=["Users"])
+async def ban_user(user_id: str, token: dict = Depends(validate_admin)):
+    """Ban a user (Admin only)"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    # Check user exists
+    cursor.execute("SELECT id FROM users WHERE id = ?", (user_id,))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Ban user
+    cursor.execute("UPDATE users SET is_banned = 1 WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+    return {"message": "User banned successfully"}
+
+@app.post("/users/{user_id}/unban", tags=["Users"])
+async def unban_user(user_id: str, token: dict = Depends(validate_admin)):
+    """Unban a user (Admin only)"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    # Check user exists
+    cursor.execute("SELECT id FROM users WHERE id = ?", (user_id,))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Unban user
+    cursor.execute("UPDATE users SET is_banned = 0 WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+    return {"message": "User unbanned successfully"}
+
+@app.post("/users/{user_id}/kick/{room_id}", tags=["Users"])
+async def kick_user(user_id: str, room_id: str, token: dict = Depends(validate_admin)):
+    """Kick a user from a room (Admin only)"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    # Remove user from room
+    cursor.execute("DELETE FROM room_users WHERE user_id = ? AND room_id = ?", (user_id, room_id))
+    
+    # Update room user count
+    cursor.execute(
+        "UPDATE rooms SET current_users = (SELECT COUNT(*) FROM room_users WHERE room_id = ?) WHERE id = ?",
+        (room_id, room_id)
+    )
+    conn.commit()
+    conn.close()
+    return {"message": "User kicked from room"}
 
 @app.post("/users", tags=["Users"])
 async def create_user(user: User):

@@ -1,0 +1,11 @@
+{
+  "name": "chat-room-message-filter-backend",
+  "version": "1.0.0",
+  "description": "Backend for Chat Room Message Filter",
+  "scripts": {
+    "postinstall": "pip install -r requirements.txt",
+    "start": "python main.py"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

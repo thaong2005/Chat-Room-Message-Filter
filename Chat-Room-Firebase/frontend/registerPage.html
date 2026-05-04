@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create Account — DiscordChat</title>
+    <link rel="stylesheet" href="auth.css" />
+</head>
+<body>
+
+    <div class="auth-card">
+
+        <!-- Header -->
+        <div class="auth-header">
+            <div class="auth-logo">💬</div>
+            <h1>Create an account</h1>
+        </div>
+
+        <!-- Register Form -->
+        <form class="auth-form" id="registerForm" novalidate>
+            <!-- Username -->
+            <div class="form-group" id="usernameGroup">
+                <label for="username">Username <span class="required">*</span></label>
+                <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    placeholder="Choose a unique username"
+                    autocomplete="username"
+                />
+                <span class="error-msg" id="usernameError">Username must be at least 3 characters.</span>
+            </div>
+
+            <!-- Password -->
+            <div class="form-group" id="passwordGroup">
+                <label for="password">Password <span class="required">*</span></label>
+                <div class="input-wrapper">
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        placeholder="Create a strong password"
+                        autocomplete="new-password"
+                    />
+                    <button type="button" class="toggle-password" aria-label="Show password" onclick="togglePassword('password', this)">
+                        👁
+                    </button>
+                </div>
+                <span class="error-msg" id="passwordError">Password must be at least 8 characters.</span>
+            </div>
+
+            <div id="registerError" style="display:none; color: var(--danger); font-size: 13px; text-align: center;"></div>
+            <div id="registerSuccess" style="display:none; color: var(--online-green); font-size: 13px; text-align: center;"></div>
+
+            <!-- Submit -->
+            <button type="submit" class="btn-submit" id="submitBtn">Continue</button>
+
+            <!-- Footer -->
+            <div class="auth-footer">
+                Already have an account? <a href="loginPage.html">Log In</a>
+            </div>
+
+        </form>
+
+    </div>
+
+    <script>
+        /* --- Toggle password visibility --- */
+        function togglePassword(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const isHidden = input.type === 'password';
+            input.type = isHidden ? 'text' : 'password';
+            btn.textContent = isHidden ? '🙈' : '👁';
+            btn.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+        }
+
+        /* --- Form Validation --- */
+        function setError(groupId, show) {
+            document.getElementById(groupId).classList.toggle('error', show);
+        }
+
+        document.getElementById('registerForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+ 
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            const registerError = document.getElementById('registerError');
+            const registerSuccess = document.getElementById('registerSuccess');
+            const submitBtn = document.getElementById('submitBtn');
+ 
+            // Clear previous banners
+            registerError.style.display = 'none';
+            registerError.textContent = '';
+            registerSuccess.style.display = 'none';
+            registerSuccess.textContent = '';
+ 
+            // Validate
+            let valid = true;
+ 
+            const username = usernameInput.value.trim();
+            if (username.length < 3) {
+                setError('usernameGroup', true);
+                valid = false;
+            } else {
+                setError('usernameGroup', false);
+            }
+ 
+            const password = passwordInput.value;
+            if (password.length < 8) {
+                setError('passwordGroup', true);
+                valid = false;
+            } else {
+                setError('passwordGroup', false);
+            }
+ 
+            if (!valid) return;
+ 
+            // Send to backend
+            submitBtn.textContent = 'Creating account...';
+            submitBtn.disabled = true;
+ 
+            try {
+                const res = await fetch(
+                    "http://localhost:8000/register?username=" + encodeURIComponent(username) +
+                    "&password=" + encodeURIComponent(password),
+                    { method: "POST" }
+                );
+ 
+                const data = await res.json();
+ 
+                if (res.ok) {
+                    // Show success then redirect to login
+                    registerSuccess.textContent = "Account created! Redirecting to login...";
+                    registerSuccess.style.display = 'block';
+                    setTimeout(() => {
+                        window.location.href = "loginPage.html";
+                    }, 1500);
+                } else {
+                    // Show error from backend e.g. "Account already exists"
+                    registerError.textContent = data.detail || "Registration failed. Please try again.";
+                    registerError.style.display = 'block';
+                }
+ 
+            } catch (err) {
+                registerError.textContent = "Could not connect to server. Is the backend running?";
+                registerError.style.display = 'block';
+            } finally {
+                submitBtn.textContent = 'Continue';
+                submitBtn.disabled = false;
+            }
+        });
+ 
+        // Clear error styling on input
+        ['username', 'password'].forEach(id => {
+            document.getElementById(id).addEventListener('input', function () {
+                this.closest('.form-group').classList.remove('error');
+            });
+        });
+
+    </script>
+
+</body>
+</html>

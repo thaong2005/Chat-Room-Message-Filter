@@ -6,6 +6,22 @@ const userList = document.getElementById('userList');
 const totalUsers = document.getElementById('totalUsers');
 const statusText = document.getElementById('statusText');
 
+// Ban modal state
+let pendingBanUserId = null;
+let pendingBanUsername = null;
+
+// Get current user role from token
+function getCurrentUserRole() {
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+    try {
+        const decoded = JSON.parse(atob(token.split('.')[1]));
+        return decoded.role;
+    } catch {
+        return null;
+    }
+}
+
 // Format user initials for avatar
 function getInitials(username) {
     return username
@@ -35,6 +51,20 @@ function getColorFromUsername(username) {
 async function loadUsers() {
     try {
         const token = localStorage.getItem('token')
+        const currentRole = getCurrentUserRole();
+        
+        console.log('Current role:', currentRole); // DEBUG
+        console.log('Token exists:', !!token); // DEBUG
+
+        if (!token) {
+            userList.innerHTML = `
+                <div class="empty-state">
+                    <p> Not logged in</p>
+                    <p style="font-size: 12px; margin-top: 10px;"><a href="index.html">Click here to login</a></p>
+                </div>
+            `;
+            return;
+        }
 
         const response = await fetch(`${API_BASE_URL}/users`, {
             method: "GET",
@@ -89,6 +119,17 @@ async function loadUsers() {
                             ${user.role === 'admin' ? '👑 Admin' : user.is_banned ? '🚫 Banned' : '👤 User'}
                         </div>
                     </div>
+                    ${currentRole === 'admin' ? `
+                        <div class="user-actions">
+                            <div class="actions-menu">
+                                ${user.role !== 'admin' ? `
+                                    <button class="action-item danger" onclick="showBanModal('${user.id}', '${user.username}')">
+                                        🚫 ${user.is_banned ? 'Unban' : 'Ban'} User
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    ` : ''}
                 </div>
             `).join('');
         }
@@ -100,6 +141,58 @@ async function loadUsers() {
             </div>
         `;
         statusText.textContent = 'Error';
+    }
+}
+
+// Modal functions
+function showBanModal(userId, username) {
+    pendingBanUserId = userId;
+    pendingBanUsername = username;
+    document.getElementById('banUsername').textContent = username;
+    document.getElementById('banModal').classList.add('show');
+}
+
+function closeBanModal() {
+    document.getElementById('banModal').classList.remove('show');
+    pendingBanUserId = null;
+    pendingBanUsername = null;
+}
+
+async function confirmBanUser() {
+    if (!pendingBanUserId) return;
+    
+    try {
+        const token = localStorage.getItem('token');
+        
+        // Check if user is already banned to determine action
+        const usersResponse = await fetch(`${API_BASE_URL}/users`, {
+            headers: { "Authorization": "Bearer " + token }
+        });
+        const usersData = await usersResponse.json();
+        const user = usersData.users.find(u => u.id === pendingBanUserId);
+        const isBanned = user?.is_banned;
+        
+        const endpoint = isBanned ? `/users/${pendingBanUserId}/unban` : `/users/${pendingBanUserId}/ban`;
+        
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: "POST",
+            headers: {
+                "Authorization": "Bearer " + token,
+                "Content-Type": "application/json"
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const message = isBanned ? 'User unbanned successfully!' : 'User banned successfully!';
+        alert(message);
+        closeBanModal();
+        loadUsers();
+    } catch (error) {
+        console.error('Error banning user:', error);
+        alert('Error: ' + error.message);
     }
 }
 

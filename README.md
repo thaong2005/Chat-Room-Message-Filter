@@ -20,32 +20,54 @@ Chat-Room-Message-Filter/
 └── documents/        # Diagrams
 ```
 
-## Quick Start
+## Quick Start (All Platforms)
 
-**Requirements:** Python 3.8+, modern browser
+**Requirements:** Node.js, Python 3.8+
 
-**1. Backend (Terminal 1)**
+**Setup (1 time only):**
 ```bash
+# 1. Create virtual environment
+python3 -m venv venv
+
+# 2. Activate venv
+# macOS/Linux:
+source venv/bin/activate
+# Windows:
+# venv\Scripts\activate
+
+# 3. Install all dependencies
+npm install
+```
+
+**Run Application:**
+```bash
+npm start
+```
+
+This will:
+- ✅ Start backend (FastAPI on port 8000)
+- ✅ Start frontend (serve on port 3000)
+
+Open `http://localhost:3000` in your browser
+
+**API Documentation:** `http://localhost:8000/docs`
+
+**Alternative: Manual Setup**
+```bash
+# Terminal 1 - Backend
+source venv/bin/activate  # or: venv\Scripts\activate on Windows
 cd backend
-pip install -r requirements.txt
 python main.py
-```
-Server runs at `http://localhost:8000`
 
-**2. Frontend (Terminal 2)**
-```bash
-cd frontend
-python -m http.server 8080
+# Terminal 2 - Frontend
+npx serve frontend -p 3000
 ```
-Open `http://localhost:8080` in your browser
 
-**3. Test**
+**Test**
 - View rooms from the lobby
 - Click a room to chat
 - Send a message (banned words are replaced with `***`)
 - Open same room in another tab to see real-time messaging
-
-API docs available at `http://localhost:8000/docs`
 
 ## Features
 
