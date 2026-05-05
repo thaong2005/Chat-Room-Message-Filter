@@ -53,7 +53,23 @@
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
+}
+
+/* Message wrapper for alignment */
+.message-wrapper {
+    display: flex;
+    justify-content: flex-start;
+    animation: slideIn 0.3s ease-out;
+}
+
+.message-wrapper.own-message {
+    justify-content: flex-end;
+}
+
+.message-wrapper.system-message,
+.message-wrapper.error-message {
+    justify-content: center;
 }
 
 .chat-messages::-webkit-scrollbar {
@@ -80,7 +96,13 @@
     color: var(--text-main);
     font-size: 15px;
     word-break: break-word;
-    animation: slideIn 0.3s ease-out;
+    border-left: 3px solid transparent;
+    max-width: 70%;
+}
+
+.message-wrapper.own-message .message {
+    background: #232428;
+    color: var(--text-main);
     border-left: 3px solid transparent;
 }
 
@@ -90,16 +112,23 @@
     text-align: center;
     font-style: italic;
     border-left: 3px solid #5865f2;
+    max-width: 100%;
 }
 
 .message.error {
     background: rgba(255, 0, 0, 0.1);
     color: #ff6b6b;
     border-left: 3px solid #ff6b6b;
+    max-width: 100%;
 }
 
 .message .username {
     color: var(--text-muted);
+    font-weight: 600;
+}
+
+.message-wrapper.own-message .username {
+    color: #23a55a;
     font-weight: 600;
 }
 
@@ -130,6 +159,13 @@
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+/* Responsive message width */
+@media (max-width: 768px) {
+    .message {
+        max-width: 85%;
     }
 }
 

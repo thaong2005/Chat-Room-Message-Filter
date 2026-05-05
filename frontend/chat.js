@@ -74,7 +74,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/messages?limit=50`, {
                 method: "GET",
-                headers: "Bearer " + token
+                headers: {
+                    "Authorization": "Bearer " + token
+                }
             });
             if (response.ok) {
                 const messages = await response.json();
@@ -136,7 +138,6 @@ document.addEventListener('DOMContentLoaded', function() {
     async function sendMessageViaAPI(roomId, text) {
         const token = localStorage.getItem('token')
         try {
-
             const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/messages`, {
                 method: 'POST',
                 headers: {
@@ -162,22 +163,37 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Add message to UI
     function addMessageToUI(user, text, isFiltered = false) {
+        // Create message wrapper for alignment
+        const wrapper = document.createElement('div');
+        
+        // Determine wrapper class
+        if (user === 'System') {
+            wrapper.className = 'message-wrapper system-message';
+        } else if (user === 'Error') {
+            wrapper.className = 'message-wrapper error-message';
+        } else if (user === currentUser.username) {
+            wrapper.className = 'message-wrapper own-message';
+        } else {
+            wrapper.className = 'message-wrapper';
+        }
+        
+        // Create message bubble
         const div = document.createElement('div');
         div.className = 'message';
         
+        // Determine username class
         let userClass = '';
         if (user === 'System') {
             userClass = ' system';
         } else if (user === 'Error') {
             userClass = ' error';
-        } else if (user === currentUser.username) {
-            userClass = ' own';
         }
         
         let filterBadge = isFiltered ? ' <span class="filter-badge">⚠ Filtered</span>' : '';
         div.innerHTML = `<strong class="username${userClass}">${user}:</strong> ${text}${filterBadge}`;
         
-        chatMessages.appendChild(div);
+        wrapper.appendChild(div);
+        chatMessages.appendChild(wrapper);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 });
