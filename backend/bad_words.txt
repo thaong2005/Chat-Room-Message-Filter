@@ -1,9 +1,45 @@
 # Bad Words List
+# Common curse words and insults
 idiot
 stupid
 damn
-gio mom phat
-jews
 fuck
-con cho
+shit
+bastard
+asshole
+bitch
+crap
+hell
+piss
+suck
+loser
+dumbass
+fatass
+moron
+retard
+jerk
+asshat
+butthole
+dick
+cock
+pussy
+whore
+slut
+prostitute
+pimp
+motherfucker
+fuckface
+shithead
+# Vietnamese bad words
+dmm
+jews
 motherfather
+con chó
+dở hơi
+khốn kiếp
+chết tiệt
+loz
+lồn
+cặc
+buồi
+chó đẻ
