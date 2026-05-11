@@ -6,9 +6,11 @@ const userList = document.getElementById('userList');
 const totalUsers = document.getElementById('totalUsers');
 const statusText = document.getElementById('statusText');
 
-// Ban modal state
+// Modal state
 let pendingBanUserId = null;
 let pendingBanUsername = null;
+let pendingUnbanUserId = null;
+let pendingUnbanUsername = null;
 
 // Get current user role from token
 function getCurrentUserRole() {
@@ -34,7 +36,6 @@ function getInitials(username) {
 
 // Generate color from username
 function getColorFromUsername(username) {
-    const hue = username.charCodeAt(0) * 30 % 360;
     const colors = [
         'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
@@ -50,16 +51,13 @@ function getColorFromUsername(username) {
 // Load all users
 async function loadUsers() {
     try {
-        const token = localStorage.getItem('token')
+        const token = localStorage.getItem('token');
         const currentRole = getCurrentUserRole();
-        
-        console.log('Current role:', currentRole); // DEBUG
-        console.log('Token exists:', !!token); // DEBUG
 
         if (!token) {
             userList.innerHTML = `
                 <div class="empty-state">
-                    <p> Not logged in</p>
+                    <p>Not logged in</p>
                     <p style="font-size: 12px; margin-top: 10px;"><a href="index.html">Click here to login</a></p>
                 </div>
             `;
@@ -68,14 +66,11 @@ async function loadUsers() {
 
         const response = await fetch(`${API_BASE_URL}/users`, {
             method: "GET",
-            headers: {
-                "Authorization": "Bearer " + token
-            }
+            headers: { "Authorization": "Bearer " + token }
         });
-        
+
         if (!response.ok) {
             if (response.status === 404) {
-                // Endpoint doesn't exist yet, show message
                 userList.innerHTML = `
                     <div class="empty-state">
                         <p>📭 No users available</p>
@@ -88,15 +83,13 @@ async function loadUsers() {
             }
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const data = await response.json();
         const users = data.users || data || [];
-        
-        // Update stats
+
         totalUsers.textContent = users.length;
         statusText.textContent = users.length > 0 ? 'Active' : 'Idle';
-        
-        // Render users list
+
         if (users.length === 0) {
             userList.innerHTML = `
                 <div class="empty-state">
@@ -123,9 +116,14 @@ async function loadUsers() {
                         <div class="user-actions">
                             <div class="actions-menu">
                                 ${user.role !== 'admin' ? `
-                                    <button class="action-item danger" onclick="showBanModal('${user.id}', '${user.username}')">
-                                        🚫 ${user.is_banned ? 'Unban' : 'Ban'} User
-                                    </button>
+                                    ${user.is_banned
+                                        ? `<button class="action-item success" onclick="showUnbanModal('${user.id}', '${user.username}')">
+                                                ✅ Unban User
+                                           </button>`
+                                        : `<button class="action-item danger" onclick="showBanModal('${user.id}', '${user.username}')">
+                                                🚫 Ban User
+                                           </button>`
+                                    }
                                 ` : ''}
                             </div>
                         </div>
@@ -144,7 +142,7 @@ async function loadUsers() {
     }
 }
 
-// Modal functions
+// ── Ban modal ────────────────────────────────────────────
 function showBanModal(userId, username) {
     pendingBanUserId = userId;
     pendingBanUsername = username;
@@ -160,38 +158,64 @@ function closeBanModal() {
 
 async function confirmBanUser() {
     if (!pendingBanUserId) return;
-    
+
     try {
         const token = localStorage.getItem('token');
-        
-        // Check if user is already banned to determine action
-        const usersResponse = await fetch(`${API_BASE_URL}/users`, {
-            headers: { "Authorization": "Bearer " + token }
-        });
-        const usersData = await usersResponse.json();
-        const user = usersData.users.find(u => u.id === pendingBanUserId);
-        const isBanned = user?.is_banned;
-        
-        const endpoint = isBanned ? `/users/${pendingBanUserId}/unban` : `/users/${pendingBanUserId}/ban`;
-        
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+
+        const response = await fetch(`${API_BASE_URL}/users/${pendingBanUserId}/ban`, {
             method: "POST",
             headers: {
                 "Authorization": "Bearer " + token,
                 "Content-Type": "application/json"
             }
         });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const message = isBanned ? 'User unbanned successfully!' : 'User banned successfully!';
-        alert(message);
+
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        alert(`${pendingBanUsername} has been banned.`);
         closeBanModal();
         loadUsers();
     } catch (error) {
         console.error('Error banning user:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+// ── Unban modal ──────────────────────────────────────────
+function showUnbanModal(userId, username) {
+    pendingUnbanUserId = userId;
+    pendingUnbanUsername = username;
+    document.getElementById('unbanUsername').textContent = username;
+    document.getElementById('unbanModal').classList.add('show');
+}
+
+function closeUnbanModal() {
+    document.getElementById('unbanModal').classList.remove('show');
+    pendingUnbanUserId = null;
+    pendingUnbanUsername = null;
+}
+
+async function confirmUnbanUser() {
+    if (!pendingUnbanUserId) return;
+
+    try {
+        const token = localStorage.getItem('token');
+
+        const response = await fetch(`${API_BASE_URL}/users/${pendingUnbanUserId}/unban`, {
+            method: "POST",
+            headers: {
+                "Authorization": "Bearer " + token,
+                "Content-Type": "application/json"
+            }
+        });
+
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        alert(`${pendingUnbanUsername} has been unbanned.`);
+        closeUnbanModal();
+        loadUsers();
+    } catch (error) {
+        console.error('Error unbanning user:', error);
         alert('Error: ' + error.message);
     }
 }
@@ -202,6 +226,5 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!token) return;
 
     loadUsers();
-    // Refresh every 5 seconds
     setInterval(loadUsers, 5000);
 });

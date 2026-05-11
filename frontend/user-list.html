@@ -187,7 +187,11 @@
         .modal-btn.confirm:hover {
             background: #d83c3e;
         }
-
+        
+        .unban-confirm{
+            background-color: rgb(5, 91, 5);
+            color: white;
+        }
         .empty-state {
             text-align: center;
             padding: 40px 20px;
@@ -281,6 +285,18 @@
             <div class="modal-actions">
                 <button class="modal-btn cancel" onclick="closeBanModal()">Cancel</button>
                 <button class="modal-btn confirm" onclick="confirmBanUser()">Ban User</button>
+            </div>
+        </div>
+    </div>
+    <div id="unbanModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">Unban User</div>
+            <div class="modal-message">
+                Are you sure you want to unban <strong id="unbanUsername"></strong>? They will regain full access to the chat.
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn cancel" onclick="closeUnbanModal()">Cancel</button>
+                <button class="modal-btn unban-confirm" onclick="confirmUnbanUser()">Unban User</button>
             </div>
         </div>
     </div>
